@@ -169,10 +169,13 @@ client.once('clientReady', async () => {
         const lastMsg = messages.first();
         if (lastMsg) {
             const num = parseInt(lastMsg.content);
+            const id = lastMsg.author.id;
             if (!isNaN(num)) {
                 // Set lastNumber in counting.js
                 counting.setLastNumber(num);
+                counting.setLastUser(id);
                 console.log(`Initialized lastNumber to ${num} from last message.`);
+                console.log(`Initialized lastUser to ${id} from last message.`);
             }
         }
     } catch (err) {

@@ -111,6 +111,9 @@ function setLastNumber(num) {
 function getLastNumber() {
     return lastNumber;
 }
+function setLastUser(id) {
+    lastUser = id;
+}
 
 module.exports = {
     mapOfShame,
@@ -120,5 +123,6 @@ module.exports = {
     loadStats,
     lastNumber,
     setLastNumber,
-    getLastNumber
+    getLastNumber,
+    setLastUser
 };
