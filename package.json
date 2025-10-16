@@ -1,0 +1,25 @@
+{
+  "name": "bs-countingbot",
+  "version": "1.0.0",
+  "description": "Counting bot for bsg",
+  "main": "index.js",
+  "scripts": {
+    "test": "test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "N"
+  },
+  "keywords": [
+    "bot"
+  ],
+  "author": "Gudu0",
+  "license": "CC-BY-NC-4.0",
+  "dependencies": {
+    "discord.js": "^14.23.2"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.37.0",
+    "eslint": "^9.37.0"
+  }
+}
