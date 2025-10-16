@@ -47,7 +47,7 @@ function newMessage(d, ENV, client) {
     } else {
         //incorrect
         
-        const channel = client.channels.cache.get(ENV.test_counting_id);
+        const channel = client.channels.cache.get(ENV.bs_counting_id);
         if (channel) {
             console.log(`Deleting message ${d.id} in channel ${d.channel_id}`);
             channel.messages.fetch(d.id)
@@ -90,8 +90,16 @@ function loadStats() {
     try {
         const data = fs.readFileSync(path.join(__dirname, 'countingStats.json'), 'utf8');
         const stats = JSON.parse(data);
-        mapOfShame = new Map(stats.shame);
-        mapOfFame = new Map(stats.fame);
+
+        mapOfShame.clear();
+        for (const [key, value] of stats.shame) {
+            mapOfShame.set(key, value);
+        }
+
+        mapOfFame.clear();
+        for (const [key, value] of stats.fame) {
+            mapOfFame.set(key, value);
+        }
     } catch (err) {
         console.log('No stats file found, starting fresh.');
     }

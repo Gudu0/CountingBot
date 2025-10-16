@@ -2,6 +2,7 @@ const { SlashCommandBuilder, MessageFlags } = require('discord.js');
 
 module.exports = {
 	cooldown: 5,
+	testonly: true,
 	data: new SlashCommandBuilder()
 	.setName('deletelastmessage')
 	.setDescription('Deletes the last message in the channel.')
