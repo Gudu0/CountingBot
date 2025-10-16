@@ -5,6 +5,7 @@ const path = require('node:path');
 let lastNumber;
 let mapOfShame = new Map();
 let mapOfFame = new Map();
+let lastUser;
 
 
 function newMessage(d, ENV, client) {
@@ -13,11 +14,11 @@ function newMessage(d, ENV, client) {
     let messageId = d.last_message_id; 
      
     
-    if (d.guild_id !== ENV.test_server_id ) {
+    if (d.guild_id !== ENV.bs_server_id) {
         //console.log(`${author}: ${d.content}`);
         return;
     }
-    if (d.channel_id !== ENV.test_counting_id) {
+    if (d.channel_id !== ENV.bs_counting_id) {
         //console.log('..'); 
         return;
     }   
@@ -25,10 +26,11 @@ function newMessage(d, ENV, client) {
     //in the counting channel in bsg
     console.log(`${author}: ${content}`);
     let newNumber = parseInt(d.content); 
-    if (lastNumber + 1 === newNumber || lastNumber - 1 === newNumber) {
+    if ((lastNumber + 1 === newNumber || lastNumber - 1 === newNumber) && lastUser !== author) {
         //correct
 
         lastNumber = newNumber;
+        lastUser = author;
         if (!mapOfFame.has(author)) {
             mapOfFame.set(author, 0);
         } 
@@ -41,14 +43,22 @@ function newMessage(d, ENV, client) {
         console.log('first number or broken');
         //first number, or broken.
         lastNumber = newNumber;
+        lastUser = author;
     } else {
         //incorrect
         
         const channel = client.channels.cache.get(ENV.test_counting_id);
         if (channel) {
+            console.log(`Deleting message ${d.id} in channel ${d.channel_id}`);
             channel.messages.fetch(d.id)
                 .then(message => message.delete())
-                .catch(console.error);
+                .catch(err => {
+            if (err.code === 10008) {
+                console.log('Tried to delete a message that does not exist.');
+            } else {
+                console.error(err);
+            }
+        });
         }
 
         if (!mapOfShame.has(author)) {
@@ -56,12 +66,17 @@ function newMessage(d, ENV, client) {
         } 
         mapOfShame.set(author, mapOfShame.get(author) + 1); 
         saveStats()
-        console.log(`${author} had a incorrect number, with ${newNumber}! They now have ${mapOfShame.get(author)} incorrect counts.`);
+        if (lastUser == author) {
+            console.log(`${author} Counted twice in a row! They now have ${mapOfShame.get(author)} incorrect counts.`)
+        } else {
+          console.log(`${author} had a incorrect number, with ${newNumber}! They now have ${mapOfShame.get(author)} incorrect counts.`)  
+        }
+        ;
     }
 }
 
 function saveStats() {
-    console.log('Saving stats to countingStats.json');
+    //console.log('Saving stats to countingStats.json');
     fs.writeFileSync(
         path.join(__dirname, 'countingStats.json'),
         JSON.stringify({

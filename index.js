@@ -158,7 +158,7 @@ client.login(token);
 
 
 client.once('clientReady', async () => {
-    const channel = client.channels.cache.get(ENV.test_counting_id);
+    const channel = client.channels.cache.get(ENV.bs_counting_id);
     if (!channel) {
         console.log('Counting channel not found!');
         return;
