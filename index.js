@@ -4,6 +4,7 @@ const { Client, Collection, Events, GatewayIntentBits, MessageFlags } = require(
 const { token } = require('./config.json');
 const counting = require('./counting.js');
 const logger = require('./logger.js');
+const os = require('os');
 
 
 // SETTING UP GATEWAY ============================================================================================================
@@ -66,7 +67,6 @@ const initializeWebsocket = () => {
 
     ws.on("close", function close() {
         if (wasReady) {
-            logger.botLog("Gateway connection closed, trying to reconnect..");
             console.log("Gateway connection closed, trying to reconnect..");
             logger.botError("Gateway connection closed, trying to reconnect..");
         }
@@ -96,14 +96,12 @@ const initializeWebsocket = () => {
 
         switch (t) {
             case "READY": 
-                logger.botLog("Gateway connection ready!");
                 console.log("Gateway connection ready!");
                 logger.botError("Gateway connection ready!");
                 url = d.resume_gateway_url;
                 session_id = d.session_id;
                 break;
             case "RESUMED": 
-                logger.botLog("Gateway connection resumed!");
                 console.log("Gateway connection resumed!");
                 logger.botError("Gateway connection resumed!");
                 break;
@@ -165,19 +163,23 @@ for (const file of eventFiles) {
 counting.loadStats();
 client.mapOfShame = counting.mapOfShame;
 client.mapOfFame = counting.mapOfFame;
+client.currentStreak = counting.currentStreak;
+client.bestStreak = counting.bestStreak;
 setInterval(counting.saveStats, 60 * 1000 * 20); // Save every 20 minutes
+
 
 client.login(token);
 
 
 client.once('clientReady', async () => {
+    
     const channel = client.channels.cache.get(ENV.bs_counting_id);
     const logChannel = client.channels.cache.get(ENV.log_channel_id); // Add this line
     if (logChannel) {
         logger.setLogChannel(logChannel);
-        logger.botLog('Logging initialized!');
+        logger.botLog(`Bot started on host: ${os.hostname()} (${os.platform()})`);
         console.log('Logging initialized!');
-        logger.botError('Error logging initialized!');
+        logger.botError('Logging initialized!');
     } else {
         logger.botLog('Log channel not found!');
         console.log('Log channel not found!');
@@ -205,8 +207,6 @@ client.once('clientReady', async () => {
                 // Set lastNumber in counting.js
                 counting.setLastNumber(num);
                 counting.setLastUser(id);
-                logger.botLog(`Initialized lastNumber to ${num} from last message.`);
-                logger.botLog(`Initialized lastUser to ${id} from last message.`);
                 logger.botError(`Initialized lastUser to ${id} from last message.`);
                 logger.botError(`Initialized lastNumber to ${num} from last message.`);
             }

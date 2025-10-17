@@ -1,5 +1,6 @@
 let logChannel = null;
 let errorThread = null;
+let errorLoggingEnabled = false;
 
 function setLogChannel(channel) {
     logChannel = channel;
@@ -16,7 +17,8 @@ function botLog(message) {
 }
 
 function botError(message) {
-    if (errorThread) {
+    botLog(message);
+    if (errorThread && errorLoggingEnabled) {
         errorThread.send(message).catch(console.error);
     }
 }

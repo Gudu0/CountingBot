@@ -17,8 +17,13 @@ module.exports = {
         const Shame = counting.mapOfShame;
         const Fame = counting.mapOfFame;
         const userId = interaction.options.getUser('user').id;
+        const current = counting.currentStreak.get(userId) || 0;
+        const best = counting.bestStreak.get(userId) || 0;
 
-		await interaction.editReply(`${interaction.options.getUser('user').username} has ${Fame.get(userId) || 0} correct counts and ${Shame.get(userId) || 0} incorrect counts.`);
+		await interaction.editReply(
+            `${interaction.options.getUser('user').username} has ${Fame.get(userId) || 0} correct counts and ${Shame.get(userId) || 0} incorrect counts.\n` +
+            `Current streak: ${current}\nBest streak: ${best}`
+        );
         logger.botLog(`Someone checked the stats for ${interaction.options.getUser('user').username}.`);
 	},
 };

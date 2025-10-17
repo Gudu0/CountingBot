@@ -1,5 +1,5 @@
 const { REST, Routes } = require('discord.js');
-const { clientId, guildId, token } = require('./config.json');
+const { clientId, guildId, token, test_server_id } = require('./config.json');
 const fs = require('node:fs');
 const path = require('node:path');
 const readline = require('node:readline');
@@ -14,8 +14,9 @@ const rl = readline.createInterface({
 });
 
 async function promptInclude(filePath) {
+    const fileName = path.basename(filePath);
     return new Promise((resolve) => {
-        rl.question(`Include command from ${filePath}? (y/n): `, (answer) => {
+        rl.question(`Include command from ${fileName}? (y/n): `, (answer) => {
             resolve(answer.trim().toLowerCase() === 'y');
         });
     });
@@ -30,7 +31,12 @@ async function promptInclude(filePath) {
             const filePath = path.join(commandsPath, file);
             const command = require(filePath);
             if ('data' in command && 'execute' in command) {
-                const include = await promptInclude(filePath);
+                let include;
+                if (guildId === test_server_id) {
+                    include = true; // Automatically include all commands for test server
+                } else {
+                    include = await promptInclude(filePath); // Prompt for other servers
+                }
                 if (include) {
                     commands.push(command.data.toJSON());
                 } else {
@@ -49,14 +55,14 @@ async function promptInclude(filePath) {
 		console.log(`Started refreshing ${commands.length} application (/) commands.`);
 
         // For commands for only a specific server
-        // const data = await rest.put(Routes.applicationGuildCommands(clientId, guildId), { body: commands });
+        const data = await rest.put(Routes.applicationGuildCommands(clientId, guildId), { body: commands });
 
         // For commands global 
         // const data = await rest.put(Routes.applicationCommands(clientId), { body: commands });
 
         // To delete commands
         //const data = await rest.put(Routes.applicationCommands(clientId), { body: [] });
-		const data = await rest.put(Routes.applicationGuildCommands(clientId, guildId), { body: [] });
+		//const data = await rest.put(Routes.applicationGuildCommands(clientId, guildId), { body: [] });
 
 		console.log(`Successfully reloaded ${data.length} application (/) commands.`);
 	} catch (error) {
