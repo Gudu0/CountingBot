@@ -3,3 +3,5 @@ config.json
 eslint.config.js
 countingStats.json
 .txt
+Notes.txt
+.gitignore

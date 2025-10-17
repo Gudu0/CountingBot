@@ -5,9 +5,12 @@ const ENV = require("./config.json");
 const logger = require('./logger.js');
 
 let lastNumber;
+let lastUser;
 let mapOfShame = new Map();
 let mapOfFame = new Map();
-let lastUser;
+let currentStreak = new Map();
+let bestStreak = new Map();
+let dailyCounts = new Map();
 
 
 function newMessage(d, ENV, client) {
@@ -36,10 +39,15 @@ function newMessage(d, ENV, client) {
         mapOfFame.set(author, mapOfFame.get(author) + 1);
         saveStats()
         logger.botLog(`${author} had a correct number, with ${newNumber}! They now have ${mapOfFame.get(author)} correct counts.`);
+        currentStreak.set(author, (currentStreak.get(author) || 0) + 1);
+        if ((bestStreak.get(author) || 0) < currentStreak.get(author)) {
+            bestStreak.set(author, currentStreak.get(author));
+        }
+        const today = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
+        dailyCounts.set(today, (dailyCounts.get(today) || 0) + 1);
     } else if (lastNumber === undefined) {
         //don't know 
 
-        logger.botLog('first number or broken');
         logger.botError('first number or broken');
         //first number, or broken.
         lastNumber = newNumber;
@@ -49,30 +57,26 @@ function newMessage(d, ENV, client) {
         
         const channel = client.channels.cache.get(ENV.bs_counting_id);
         if (channel) {
-            logger.botLog(`Deleting message ${d.id} in channel ${d.channel_id}`);
             logger.botError(`Deleting message ${d.id} in channel ${d.channel_id}`);
             channel.messages.fetch(d.id)
                 .then(message => message.delete())
                 .catch(err => {
             if (err.code === 10008) {
-                logger.botLog('Tried to delete a message that does not exist.');
                 logger.botError('Tried to delete a message that does not exist.');
             } else {
                 console.error(err);
             }
         });
         }
-
+        currentStreak.set(author, 0);
         if (!mapOfShame.has(author)) {
             mapOfShame.set(author, 0);
         } 
         mapOfShame.set(author, mapOfShame.get(author) + 1); 
         saveStats()
         if (lastUser == author) {
-            logger.botLog(`${author} Counted twice in a row! They now have ${mapOfShame.get(author)} incorrect counts.`)
             logger.botError(`${author} Counted twice in a row! They now have ${mapOfShame.get(author)} incorrect counts.`)
         } else {
-          logger.botLog(`${author} had a incorrect number, with ${newNumber}! They now have ${mapOfShame.get(author)} incorrect counts.`)
           logger.botError(`${author} had a incorrect number, with ${newNumber}! They now have ${mapOfShame.get(author)} incorrect counts.`)
         }
         ;
@@ -85,7 +89,10 @@ function saveStats() {
         path.join(__dirname, 'countingStats.json'),
         JSON.stringify({
             shame: Array.from(mapOfShame.entries()),
-            fame: Array.from(mapOfFame.entries())
+            fame: Array.from(mapOfFame.entries()),
+            currentStreak: Array.from(currentStreak.entries()),
+            bestStreak: Array.from(bestStreak.entries()),
+            dailyCounts: Array.from(dailyCounts.entries())
         }, null, 2)
     );
 }
@@ -96,13 +103,28 @@ function loadStats() {
         const stats = JSON.parse(data);
 
         mapOfShame.clear();
-        for (const [key, value] of stats.shame) {
+        for (const [key, value] of stats.shame || []) {
             mapOfShame.set(key, value);
         }
 
         mapOfFame.clear();
-        for (const [key, value] of stats.fame) {
+        for (const [key, value] of stats.fame || []) {
             mapOfFame.set(key, value);
+        }
+
+        currentStreak.clear();
+        for (const [key, value] of stats.currentStreak || []) {
+            currentStreak.set(key, value);
+        }
+
+        bestStreak.clear();
+        for (const [key, value] of stats.bestStreak || []) {
+            bestStreak.set(key, value);
+        }
+
+        dailyCounts.clear();
+        for (const [key, value] of stats.dailyCounts || []) {
+            dailyCounts.set(key, value);
         }
     } catch (err) {
         logger.botLog('No stats file found, starting fresh.');
@@ -129,5 +151,8 @@ module.exports = {
     lastNumber,
     setLastNumber,
     getLastNumber,
-    setLastUser
+    setLastUser, 
+    currentStreak,
+    bestStreak,
+    dailyCounts
 };
