@@ -15,48 +15,74 @@ let dailyCounts = new Map();
 
 function newMessage(d, ENV, client) {
     let author = d.author.id;
-    let content = d.content;
-    let messageId = d.last_message_id; 
-     
+    let content = d.content.trim();
     
+    
+
     if (d.guild_id !== ENV.bs_server_id) {
         return;
     }
     if (d.channel_id !== ENV.bs_counting_id) {
         return;
-    }   
+    }  
 
+    if (!/^-?\d+$/.test(content)) {
+        // Mark as incorrect
+        incorrectCount(d, author, NaN, ENV, client);
+        return;
+    }
     //in the counting channel in bsg
-    let newNumber = parseInt(d.content); 
+    let newNumber = parseInt(content); 
     if ((lastNumber + 1 === newNumber || lastNumber - 1 === newNumber) && lastUser !== author) {
         //correct
 
-        lastNumber = newNumber;
-        lastUser = author;
-        if (!mapOfFame.has(author)) {
-            mapOfFame.set(author, 0);
-        } 
-        mapOfFame.set(author, mapOfFame.get(author) + 1);
-        saveStats()
-        logger.botLog(`${author} had a correct number, with ${newNumber}! They now have ${mapOfFame.get(author)} correct counts.`);
-        currentStreak.set(author, (currentStreak.get(author) || 0) + 1);
-        if ((bestStreak.get(author) || 0) < currentStreak.get(author)) {
-            bestStreak.set(author, currentStreak.get(author));
-        }
-        const today = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
-        dailyCounts.set(today, (dailyCounts.get(today) || 0) + 1);
+        correctCount(author, newNumber);
     } else if (lastNumber === undefined) {
-        //don't know 
-
-        logger.botError('first number or broken');
-        //first number, or broken.
+        //something went wrong
+        logger.botError('last number not loaded properly or broken');
         lastNumber = newNumber;
         lastUser = author;
     } else {
         //incorrect
-        
-        const channel = client.channels.cache.get(ENV.bs_counting_id);
-        if (channel) {
+        incorrectCount(d, author, newNumber, ENV, client);
+    }
+}
+
+
+function correctCount(author, newNumber ) {
+    //set most recent number and user ------------------------------
+    lastNumber = newNumber;
+    lastUser = author;
+
+    //mapOfFame update ---------------------------------------------
+    if (!mapOfFame.has(author)) {
+            mapOfFame.set(author, 0);
+    } 
+    mapOfFame.set(author, mapOfFame.get(author) + 1);
+    saveStats();
+
+    //Streak update ------------------------------------------------
+    currentStreak.set(author, (currentStreak.get(author) || 0) + 1);
+    if ((bestStreak.get(author) || 0) < currentStreak.get(author)) {
+        bestStreak.set(author, currentStreak.get(author));
+    }
+
+    //Logging ------------------------------------------------------
+    logger.botLog(`${author} had a correct number, with ${newNumber}! They now have ${mapOfFame.get(author)} correct counts.`);
+
+    //Daily counts update -------------------------------------------
+    const today = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
+    dailyCounts.set(today, (dailyCounts.get(today) || 0) + 1);
+
+}
+
+
+
+function incorrectCount(d, author, newNumber, ENV, client) {
+    console.log(`Incorrect: ${d.author.username}: ${d.content}`);
+    //delete the message ---------------------------------------
+    const channel = client.channels.cache.get(ENV.bs_counting_id);
+    if (channel) {
             logger.botError(`Deleting message ${d.id} in channel ${d.channel_id}`);
             channel.messages.fetch(d.id)
                 .then(message => message.delete())
@@ -67,21 +93,27 @@ function newMessage(d, ENV, client) {
                 console.error(err);
             }
         });
-        }
-        currentStreak.set(author, 0);
-        if (!mapOfShame.has(author)) {
+    }
+
+    //set streak to 0
+    currentStreak.set(author, 0);
+
+    //update mapOfShame -------------------------------------------
+    if (!mapOfShame.has(author)) {
             mapOfShame.set(author, 0);
-        } 
-        mapOfShame.set(author, mapOfShame.get(author) + 1); 
-        saveStats()
-        if (lastUser == author) {
-            logger.botError(`${author} Counted twice in a row! They now have ${mapOfShame.get(author)} incorrect counts.`)
-        } else {
-          logger.botError(`${author} had a incorrect number, with ${newNumber}! They now have ${mapOfShame.get(author)} incorrect counts.`)
-        }
-        ;
+    }
+    mapOfShame.set(author, mapOfShame.get(author) + 1);
+    saveStats();
+
+    //Determine type of incorrect count ---------------------------
+    if (lastUser == author) {
+        logger.botError(`${author} Counted twice in a row! They now have ${mapOfShame.get(author)} incorrect counts.`);
+    } else {
+      logger.botLog(`${author} had a incorrect number, with ${newNumber}! They now have ${mapOfShame.get(author)} incorrect counts.`);
     }
 }
+
+
 
 function saveStats() {
     logger.botLog('Saving stats to countingStats.json');
@@ -96,6 +128,8 @@ function saveStats() {
         }, null, 2)
     );
 }
+
+
 
 function loadStats() {
     try {
@@ -132,6 +166,8 @@ function loadStats() {
     }
 }
 
+
+
 function setLastNumber(num) {
     lastNumber = num;
 }
@@ -141,6 +177,10 @@ function getLastNumber() {
 function setLastUser(id) {
     lastUser = id;
 }
+
+
+
+
 
 module.exports = {
     mapOfShame,
