@@ -3,10 +3,13 @@ const path = require('node:path');
 const { Client, Collection, Events, GatewayIntentBits, MessageFlags } = require('discord.js');
 const { token } = require('./config.json');
 const counting = require('./counting.js');
+const logger = require('./logger.js');
+
 
 // SETTING UP GATEWAY ============================================================================================================
 const { WebSocket } = require('ws');
 const ENV = require("./config.json");
+const { log } = require('node:console');
 
 const initialurl = "wss://gateway.discord.gg";
 let url = initialurl,
@@ -57,12 +60,17 @@ const initializeWebsocket = () => {
     })
 
     ws.on("error", function error(e) {
-        console.log(e)
+        logger.botLog(e)
+        console.log(e);
     });
 
     ws.on("close", function close() {
-        if (wasReady) console.log("Gateway connection closed, trying to reconnect..")
-
+        if (wasReady) {
+            logger.botLog("Gateway connection closed, trying to reconnect..");
+            console.log("Gateway connection closed, trying to reconnect..");
+            logger.botError("Gateway connection closed, trying to reconnect..");
+        }
+            
         setTimeout(() => {
             initializeWebsocket();
         }, 2500)
@@ -88,12 +96,16 @@ const initializeWebsocket = () => {
 
         switch (t) {
             case "READY": 
+                logger.botLog("Gateway connection ready!");
                 console.log("Gateway connection ready!");
+                logger.botError("Gateway connection ready!");
                 url = d.resume_gateway_url;
                 session_id = d.session_id;
                 break;
             case "RESUMED": 
+                logger.botLog("Gateway connection resumed!");
                 console.log("Gateway connection resumed!");
+                logger.botError("Gateway connection resumed!");
                 break;
             case "MESSAGE_CREATE": 
                 counting.newMessage(d, ENV, client);
@@ -130,7 +142,8 @@ for (const folder of commandFolders) {
 		if ('data' in command && 'execute' in command) {
 			client.commands.set(command.data.name, command);
 		} else {
-			console.log(`[WARNING] The command at ${filePath} is missing a required "data" or "execute" property.`);
+			logger.botLog(`[WARNING] The command at ${filePath} is missing a required "data" or "execute" property.`);
+            console.log(`[WARNING] The command at ${filePath} is missing a required "data" or "execute" property.`);
 		}
 	}
 }
@@ -159,7 +172,25 @@ client.login(token);
 
 client.once('clientReady', async () => {
     const channel = client.channels.cache.get(ENV.bs_counting_id);
+    const logChannel = client.channels.cache.get(ENV.log_channel_id); // Add this line
+    if (logChannel) {
+        logger.setLogChannel(logChannel);
+        logger.botLog('Logging initialized!');
+        console.log('Logging initialized!');
+        logger.botError('Error logging initialized!');
+    } else {
+        logger.botLog('Log channel not found!');
+        console.log('Log channel not found!');
+    }
+    const logThread = await client.channels.fetch(ENV.log_thread_id);
+    if (logThread && logThread.isThread()) {
+        logger.setErrorThread(logThread);
+        logger.botError('Error logging initialized in thread!');
+    } else {
+        logger.botLog('Log thread not found or is not a thread!');
+    }
     if (!channel) {
+        logger.botLog('Counting channel not found!');
         console.log('Counting channel not found!');
         return;
     }
@@ -174,11 +205,15 @@ client.once('clientReady', async () => {
                 // Set lastNumber in counting.js
                 counting.setLastNumber(num);
                 counting.setLastUser(id);
-                console.log(`Initialized lastNumber to ${num} from last message.`);
-                console.log(`Initialized lastUser to ${id} from last message.`);
+                logger.botLog(`Initialized lastNumber to ${num} from last message.`);
+                logger.botLog(`Initialized lastUser to ${id} from last message.`);
+                logger.botError(`Initialized lastUser to ${id} from last message.`);
+                logger.botError(`Initialized lastNumber to ${num} from last message.`);
             }
         }
     } catch (err) {
+        logger.botLog(`Error fetching last message: ${err.message}`);
         console.error('Error fetching last message:', err);
+
     }
 });

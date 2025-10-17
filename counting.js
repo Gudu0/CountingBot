@@ -1,6 +1,8 @@
 const fs = require('node:fs');
 const { get } = require('node:http');
 const path = require('node:path');
+const ENV = require("./config.json");
+const logger = require('./logger.js');
 
 let lastNumber;
 let mapOfShame = new Map();
@@ -15,16 +17,13 @@ function newMessage(d, ENV, client) {
      
     
     if (d.guild_id !== ENV.bs_server_id) {
-        //console.log(`${author}: ${d.content}`);
         return;
     }
     if (d.channel_id !== ENV.bs_counting_id) {
-        //console.log('..'); 
         return;
     }   
 
     //in the counting channel in bsg
-    console.log(`${author}: ${content}`);
     let newNumber = parseInt(d.content); 
     if ((lastNumber + 1 === newNumber || lastNumber - 1 === newNumber) && lastUser !== author) {
         //correct
@@ -36,11 +35,12 @@ function newMessage(d, ENV, client) {
         } 
         mapOfFame.set(author, mapOfFame.get(author) + 1);
         saveStats()
-        console.log(`${author} had a correct number, with ${newNumber}! They now have ${mapOfFame.get(author)} correct counts.`);
+        logger.botLog(`${author} had a correct number, with ${newNumber}! They now have ${mapOfFame.get(author)} correct counts.`);
     } else if (lastNumber === undefined) {
         //don't know 
 
-        console.log('first number or broken');
+        logger.botLog('first number or broken');
+        logger.botError('first number or broken');
         //first number, or broken.
         lastNumber = newNumber;
         lastUser = author;
@@ -49,12 +49,14 @@ function newMessage(d, ENV, client) {
         
         const channel = client.channels.cache.get(ENV.bs_counting_id);
         if (channel) {
-            console.log(`Deleting message ${d.id} in channel ${d.channel_id}`);
+            logger.botLog(`Deleting message ${d.id} in channel ${d.channel_id}`);
+            logger.botError(`Deleting message ${d.id} in channel ${d.channel_id}`);
             channel.messages.fetch(d.id)
                 .then(message => message.delete())
                 .catch(err => {
             if (err.code === 10008) {
-                console.log('Tried to delete a message that does not exist.');
+                logger.botLog('Tried to delete a message that does not exist.');
+                logger.botError('Tried to delete a message that does not exist.');
             } else {
                 console.error(err);
             }
@@ -67,16 +69,18 @@ function newMessage(d, ENV, client) {
         mapOfShame.set(author, mapOfShame.get(author) + 1); 
         saveStats()
         if (lastUser == author) {
-            console.log(`${author} Counted twice in a row! They now have ${mapOfShame.get(author)} incorrect counts.`)
+            logger.botLog(`${author} Counted twice in a row! They now have ${mapOfShame.get(author)} incorrect counts.`)
+            logger.botError(`${author} Counted twice in a row! They now have ${mapOfShame.get(author)} incorrect counts.`)
         } else {
-          console.log(`${author} had a incorrect number, with ${newNumber}! They now have ${mapOfShame.get(author)} incorrect counts.`)  
+          logger.botLog(`${author} had a incorrect number, with ${newNumber}! They now have ${mapOfShame.get(author)} incorrect counts.`)
+          logger.botError(`${author} had a incorrect number, with ${newNumber}! They now have ${mapOfShame.get(author)} incorrect counts.`)
         }
         ;
     }
 }
 
 function saveStats() {
-    //console.log('Saving stats to countingStats.json');
+    logger.botLog('Saving stats to countingStats.json');
     fs.writeFileSync(
         path.join(__dirname, 'countingStats.json'),
         JSON.stringify({
@@ -101,7 +105,8 @@ function loadStats() {
             mapOfFame.set(key, value);
         }
     } catch (err) {
-        console.log('No stats file found, starting fresh.');
+        logger.botLog('No stats file found, starting fresh.');
+        logger.botError('No stats file found, starting fresh.');
     }
 }
 

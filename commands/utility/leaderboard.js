@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, MessageFlags } = require('discord.js');
 const counting = require('../../counting.js');
+const logger = require('../../logger.js');
 
 module.exports = {
 	cooldown: 5,
@@ -17,6 +18,6 @@ module.exports = {
 
         const reply = `**Fame Leaderboard:**\n${fameBoard}\n\n**Shame Leaderboard:**\n${shameBoard}`;
         await interaction.editReply(reply);
-        
+        logger.botLog('Someone checked the leaderboard!');
 	},
 };

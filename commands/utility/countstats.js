@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, MessageFlags } = require('discord.js');
 const counting = require('../../counting.js');
+const logger = require('../../logger.js');
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -17,7 +18,7 @@ module.exports = {
         const Fame = counting.mapOfFame;
         const userId = interaction.options.getUser('user').id;
 
-        console.log(userId);
 		await interaction.editReply(`${interaction.options.getUser('user').username} has ${Fame.get(userId) || 0} correct counts and ${Shame.get(userId) || 0} incorrect counts.`);
+        logger.botLog(`Someone checked the stats for ${interaction.options.getUser('user').username}.`);
 	},
 };
