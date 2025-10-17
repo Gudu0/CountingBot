@@ -165,7 +165,7 @@ for (const file of eventFiles) {
 counting.loadStats();
 client.mapOfShame = counting.mapOfShame;
 client.mapOfFame = counting.mapOfFame;
-setInterval(counting.saveStats, 60 * 1000); // Save every 60 seconds
+setInterval(counting.saveStats, 60 * 1000 * 20); // Save every 20 minutes
 
 client.login(token);
 
