@@ -2,4 +2,5 @@ node_modules/
 eslint.config.js
 NonCore/
 .github/
-data/
+data/config.json
+data/logSettings.json
