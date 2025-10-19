@@ -30,7 +30,7 @@ function isLogEnabled(key, guildId) {
 
 function log(message, key = 'default', guildId = null) {
     const enabled = guildId ? isLogEnabled(key, guildId) : true;
-    console.log(`[log] key: ${key}, guildId: ${guildId}, enabled: ${enabled}`);
+    //console.log(`[log] key: ${key}, guildId: ${guildId}, enabled: ${enabled}`);
     if (guildId && !enabled) return;
 
     if (logChannel) {

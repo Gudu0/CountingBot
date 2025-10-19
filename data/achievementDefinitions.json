@@ -1,0 +1,21 @@
+{
+    "count_1": { "name": "Count to 1", "description": "Counted 1 for the first time." },
+    "count_10": { "name": "Count to 10", "description": "Successfully counted to 10." },
+    "count_100": { "name": "Count to 100", "description": "Successfully counted to 100." },
+    "count_1000": { "name": "Count to 1000", "description": "Successfully counted to 1000." },
+    "count_10000": { "name": "Count to 10,000", "description": "Successfully counted to 10,000." },
+    "streak_10": { "name": "10 Streak", "description": "Reached a streak of 10 without failing." },
+    "streak_50": { "name": "50 Streak", "description": "Reached a streak of 50 without failing." },
+    "streak_100": { "name": "100 Streak", "description": "Reached a streak of 100 without failing." },
+    "streak_500": { "name": "500 Streak", "description": "Reached a streak of 500 without failing." },
+    "streak_1000": { "name": "1000 Streak", "description": "Reached a streak of 1000 without failing." },
+    "cause_fail": { "name": "Saboteur", "description": "Another user repeated a number you sent, causing them to incorrectly count." },
+    "increasing_count_1": { "name": "increasing Counter", "description": "Sent 1 increasing numbers in the count." },
+    "increasing_count_10": { "name": "increasing Counter", "description": "Sent 10 increasing numbers in the count." },
+    "increasing_count_100": { "name": "increasing Counter", "description": "Sent 100 increasing numbers in the count." },
+    "increasing_count_1000": { "name": "increasing Counter", "description": "Sent 1000 increasing numbers in the count." },
+    "decreasing_count_1": { "name": "decreasing Counter", "description": "Sent 1 decreasing numbers in the count." },
+    "decreasing_count_10": { "name": "decreasing Counter", "description": "Sent 10 decreasing numbers in the count." },
+    "decreasing_count_100": { "name": "decreasing Counter", "description": "Sent 100 decreasing numbers in the count." },
+    "decreasing_count_1000": { "name": "decreasing Counter", "description": "Sent 1000 decreasing numbers in the count." }
+}

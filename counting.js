@@ -3,6 +3,7 @@ const { get } = require('node:http');
 const path = require('node:path');
 const ENV = require("./data/config.json");
 const logger = require('./logger.js');
+const achievements = require('./achievement-check.js');
 
 let lastNumber;
 let lastUser;
@@ -12,6 +13,8 @@ let currentStreak = new Map();
 let bestStreak = new Map();
 let dailyCounts = new Map();
 let lastCountTime = new Map();
+let positiveCounts = new Map();
+let negativeCounts = new Map();
 
 
 function newMessage(d, ENV, client) {
@@ -25,6 +28,8 @@ function newMessage(d, ENV, client) {
     if (d.channel_id !== ENV.bs_counting_id) {
         return;
     }  
+
+    achievements.checkAndAwardAchievements(d, mapOfFame, currentStreak, positiveCounts, negativeCounts);
 
     if (!/^-?\d+$/.test(content)) {
         // Mark as incorrect
@@ -58,6 +63,10 @@ function newMessage(d, ENV, client) {
 }
 
 function correctCount(author, newNumber ) {
+
+    // Store previous lastNumber for positive/negative check
+    const prevLastNumber = lastNumber;
+
     //set most recent number and user ------------------------------
     lastNumber = newNumber;
     lastUser = author;
@@ -67,9 +76,17 @@ function correctCount(author, newNumber ) {
 
     //mapOfFame update ---------------------------------------------
     if (!mapOfFame.has(author)) {
-            mapOfFame.set(author, 0);
-    } 
+        mapOfFame.set(author, 0);
+    }
     mapOfFame.set(author, mapOfFame.get(author) + 1);
+    saveStats();
+
+    //positive/negative counts update -----------------------------
+    if (newNumber === prevLastNumber + 1) {
+        positiveCounts.set(author, (positiveCounts.get(author) || 0) + 1);
+    } else if (newNumber === prevLastNumber - 1) {
+        negativeCounts.set(author, (negativeCounts.get(author) || 0) + 1);
+    }
     saveStats();
 
     //Streak update ------------------------------------------------
@@ -135,7 +152,9 @@ function saveStats() {
                 fame: Array.from(mapOfFame.entries()),
                 currentStreak: Array.from(currentStreak.entries()),
                 bestStreak: Array.from(bestStreak.entries()),
-                dailyCounts: Array.from(dailyCounts.entries())
+                dailyCounts: Array.from(dailyCounts.entries()),
+                positiveCounts: Array.from(positiveCounts.entries()),
+                negativeCounts: Array.from(negativeCounts.entries())
             }, null, 2)
         );
     } catch (err) {
@@ -172,6 +191,16 @@ function loadStats() {
         for (const [key, value] of stats.dailyCounts || []) {
             dailyCounts.set(key, value);
         }
+
+        positiveCounts.clear();
+        for (const [key, value] of stats.positiveCounts || []) {
+            positiveCounts.set(key, value);
+        }
+
+        negativeCounts.clear();
+        for (const [key, value] of stats.negativeCounts || []) {
+            negativeCounts.set(key, value);
+        }
     } catch (err) {
         logger.log('No stats file found, starting fresh.', 'no_stats_file', ENV.bs_server_id);
     }
@@ -203,5 +232,7 @@ module.exports = {
     setLastUser, 
     currentStreak,
     bestStreak,
-    dailyCounts
+    dailyCounts, 
+    positiveCounts,
+    negativeCounts
 };
