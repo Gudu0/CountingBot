@@ -9,7 +9,7 @@ module.exports = {
         .setDefaultMemberPermissions(PermissionFlagsBits.BanMembers),
     async execute(interaction) {
         try {
-            const settingsPath = path.join(__dirname, '../../logSettings.json');
+            const settingsPath = path.join(__dirname, '../../data/logSettings.json');
             let settings = {};
             if (fs.existsSync(settingsPath)) {
                 settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));

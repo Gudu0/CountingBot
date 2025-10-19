@@ -1,7 +1,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { Client, Collection, Events, GatewayIntentBits, MessageFlags } = require('discord.js');
-const { token } = require('./config.json');
+const { token } = require('./data/config.json');
 const counting = require('./counting.js');
 const logger = require('./logger.js');
 const os = require('os');
@@ -9,7 +9,7 @@ const os = require('os');
 
 // SETTING UP GATEWAY ============================================================================================================
 const { WebSocket } = require('ws');
-const ENV = require("./config.json");
+const ENV = require("./data/config.json");
 
 const initialurl = "wss://gateway.discord.gg";
 let url = initialurl,

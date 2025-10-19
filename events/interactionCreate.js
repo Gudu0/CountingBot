@@ -9,7 +9,7 @@ module.exports = {
         if (interaction.isStringSelectMenu() && interaction.customId.startsWith('loglines_select_')) {
             const fs = require('node:fs');
             const path = require('node:path');
-            const settingsPath = path.join(__dirname, '../logSettings.json');
+            const settingsPath = path.join(__dirname, '../data/logSettings.json');
             const guildId = interaction.guildId;
             let settings = {};
 			
@@ -55,7 +55,7 @@ module.exports = {
 		if (interaction.isButton() && interaction.customId === 'loglines_submit') {
 			const fs = require('node:fs');
 			const path = require('node:path');
-			const settingsPath = path.join(__dirname, '../logSettings.json');
+			const settingsPath = path.join(__dirname, '../data/logSettings.json');
 			const guildId = interaction.guildId;
 			let settings = {};
 			if (fs.existsSync(settingsPath)) {

@@ -1,9 +1,5 @@
-node_modules
-config.json
+node_modules/
 eslint.config.js
-countingStats.json
-.txt
-Notes.txt
-ssh-key-2025-10-16.key
-update-bot-server.ps1
-logSettings.json
+NonCore/
+.github/
+data/

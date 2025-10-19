@@ -16,7 +16,7 @@ function setErrorThread(thread) {
 // Helper to check if a log key is enabled for a guild
 function isLogEnabled(key, guildId) {
     try {
-        const settingsPath = path.join(__dirname, 'logSettings.json');
+        const settingsPath = path.join(__dirname, 'data', 'logSettings.json');
         if (!fs.existsSync(settingsPath)) return true; // Default: log if no settings
         const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
         if (!settings[guildId] || !settings[guildId].logs) return true;

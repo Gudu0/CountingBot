@@ -1,7 +1,7 @@
 module.exports = {
     name: 'messageDelete',
     async execute(message) {
-        const ENV = require('../config.json');
+        const ENV = require('../data/config.json');
         const counting = require('../counting.js');
         const logger = require('../logger.js');
 

@@ -1,7 +1,7 @@
 const { SlashCommandBuilder, MessageFlags } = require('discord.js');
 const counting = require('../../counting.js');
 const logger = require('../../logger.js');
-const ENV = require("../../config.json");
+const ENV = require("../../data/config.json");
 
 module.exports = {
 	data: new SlashCommandBuilder()

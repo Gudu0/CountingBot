@@ -1,7 +1,7 @@
 const fs = require('node:fs');
 const { get } = require('node:http');
 const path = require('node:path');
-const ENV = require("./config.json");
+const ENV = require("./data/config.json");
 const logger = require('./logger.js');
 
 let lastNumber;
@@ -129,7 +129,7 @@ function saveStats() {
     logger.log('Saving stats to countingStats.json', 'saving_stats', ENV.bs_server_id);
     try {
         fs.writeFileSync(
-            path.join(__dirname, 'countingStats.json'),
+            path.join(__dirname, 'data', 'countingStats.json'),
             JSON.stringify({
                 shame: Array.from(mapOfShame.entries()),
                 fame: Array.from(mapOfFame.entries()),
@@ -145,7 +145,7 @@ function saveStats() {
 
 function loadStats() {
     try {
-        const data = fs.readFileSync(path.join(__dirname, 'countingStats.json'), 'utf8');
+        const data = fs.readFileSync(path.join(__dirname, 'data', 'countingStats.json'), 'utf8');
         const stats = JSON.parse(data);
 
         mapOfShame.clear();
