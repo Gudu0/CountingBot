@@ -10,7 +10,6 @@ const os = require('os');
 // SETTING UP GATEWAY ============================================================================================================
 const { WebSocket } = require('ws');
 const ENV = require("./config.json");
-const { log } = require('node:console');
 
 const initialurl = "wss://gateway.discord.gg";
 let url = initialurl,
@@ -61,14 +60,14 @@ const initializeWebsocket = () => {
     })
 
     ws.on("error", function error(e) {
-        logger.botLog(e)
+        logger.log(e, 'gateway_error', ENV.bs_server_id);
         console.log(e);
     });
 
     ws.on("close", function close() {
         if (wasReady) {
             console.log("Gateway connection closed, trying to reconnect..");
-            logger.botError("Gateway connection closed, trying to reconnect..");
+            logger.log("Gateway connection closed, trying to reconnect..", 'gateway_connection_closed', ENV.bs_server_id);
         }
             
         setTimeout(() => {
@@ -97,13 +96,13 @@ const initializeWebsocket = () => {
         switch (t) {
             case "READY": 
                 console.log("Gateway connection ready!");
-                logger.botError("Gateway connection ready!");
+                logger.log("Gateway connection ready!", "gateway_connection_ready", ENV.bs_server_id);
                 url = d.resume_gateway_url;
                 session_id = d.session_id;
                 break;
             case "RESUMED": 
                 console.log("Gateway connection resumed!");
-                logger.botError("Gateway connection resumed!");
+                logger.log("Gateway connection resumed!", "gateway_connection_resumed", ENV.bs_server_id);
                 break;
             case "MESSAGE_CREATE": 
                 counting.newMessage(d, ENV, client);
@@ -140,7 +139,7 @@ for (const folder of commandFolders) {
 		if ('data' in command && 'execute' in command) {
 			client.commands.set(command.data.name, command);
 		} else {
-			logger.botLog(`[WARNING] The command at ${filePath} is missing a required "data" or "execute" property.`);
+			logger.log(`[WARNING] The command at ${filePath} is missing a required "data" or "execute" property.`, 'command_missing_data_or_execute', ENV.bs_server_id);
             console.log(`[WARNING] The command at ${filePath} is missing a required "data" or "execute" property.`);
 		}
 	}
@@ -177,22 +176,22 @@ client.once('clientReady', async () => {
     const logChannel = client.channels.cache.get(ENV.log_channel_id); // Add this line
     if (logChannel) {
         logger.setLogChannel(logChannel);
-        logger.botLog(`Bot started on host: ${os.hostname()} (${os.platform()})`);
+        logger.log(`Bot started on host: ${os.hostname()} (${os.platform()})`, 'bot_started', ENV.bs_server_id);
         console.log('Logging initialized!');
-        logger.botError('Logging initialized!');
+        logger.log('Logging initialized!', 'logging_initialized', ENV.bs_server_id);
     } else {
-        logger.botLog('Log channel not found!');
+        logger.log('Log channel not found!', 'log_channel_not_found', ENV.bs_server_id);
         console.log('Log channel not found!');
     }
     const logThread = await client.channels.fetch(ENV.log_thread_id);
     if (logThread && logThread.isThread()) {
         logger.setErrorThread(logThread);
-        logger.botError('Error logging initialized in thread!');
+        logger.log('Error logging initialized in thread!', 'error_logging_initialized', ENV.bs_server_id);
     } else {
-        logger.botLog('Log thread not found or is not a thread!');
+        logger.log('Log thread not found or is not a thread!', 'log_thread_not_found', ENV.bs_server_id);
     }
     if (!channel) {
-        logger.botLog('Counting channel not found!');
+        logger.log('Counting channel not found!', 'counting_channel_not_found', ENV.bs_server_id);
         console.log('Counting channel not found!');
         return;
     }
@@ -207,12 +206,12 @@ client.once('clientReady', async () => {
                 // Set lastNumber in counting.js
                 counting.setLastNumber(num);
                 counting.setLastUser(id);
-                logger.botError(`Initialized lastUser to ${id} from last message.`);
-                logger.botError(`Initialized lastNumber to ${num} from last message.`);
+                logger.log(`Initialized lastUser to ${id} from last message.`, 'last_user_initialized', ENV.bs_server_id);
+                logger.log(`Initialized lastNumber to ${num} from last message.`, 'last_number_initialized', ENV.bs_server_id);
             }
         }
     } catch (err) {
-        logger.botLog(`Error fetching last message: ${err.message}`);
+        logger.log(`Error fetching last message: ${err.message}`, 'error_fetching_last_message', ENV.bs_server_id);
         console.error('Error fetching last message:', err);
 
     }

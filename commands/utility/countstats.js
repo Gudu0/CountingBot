@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, MessageFlags } = require('discord.js');
 const counting = require('../../counting.js');
 const logger = require('../../logger.js');
+const ENV = require("../../config.json");
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -24,6 +25,6 @@ module.exports = {
             `${interaction.options.getUser('user').username} has ${Fame.get(userId) || 0} correct counts and ${Shame.get(userId) || 0} incorrect counts.\n` +
             `Current streak: ${current}\nBest streak: ${best}`
         );
-        logger.botLog(`Someone checked the stats for ${interaction.options.getUser('user').username}.`);
+        logger.log(`Someone checked the stats for ${interaction.options.getUser('user').username}.`, 'checked_countstats', ENV.bs_server_id);
 	},
 };

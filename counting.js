@@ -11,12 +11,12 @@ let mapOfFame = new Map();
 let currentStreak = new Map();
 let bestStreak = new Map();
 let dailyCounts = new Map();
+let lastCountTime = new Map();
 
 
 function newMessage(d, ENV, client) {
     let author = d.author.id;
     let content = d.content.trim();
-    
     
 
     if (d.guild_id !== ENV.bs_server_id) {
@@ -29,17 +29,26 @@ function newMessage(d, ENV, client) {
     if (!/^-?\d+$/.test(content)) {
         // Mark as incorrect
         incorrectCount(d, author, NaN, ENV, client);
+        logger.log(`${author} sent a non-numeric message!`, 'non_numeric', ENV.bs_server_id);
         return;
     }
     //in the counting channel in bsg
     let newNumber = parseInt(content); 
+
+    const now = Date.now();
+    if (lastCountTime.has(author) && now - lastCountTime.get(author) < 5000) {
+        // Too soon, mark as incorrect
+        incorrectCount(d, author, newNumber, ENV, client);
+        logger.log(`${author} is counting too fast!`, 'counted_too_fast', ENV.bs_server_id);
+        return;
+    }
     if ((lastNumber + 1 === newNumber || lastNumber - 1 === newNumber) && lastUser !== author) {
         //correct
 
         correctCount(author, newNumber);
     } else if (lastNumber === undefined) {
         //something went wrong
-        logger.botError('last number not loaded properly or broken');
+        logger.log('last number not loaded properly or broken', 'last_number_not_loaded', ENV.bs_server_id);
         lastNumber = newNumber;
         lastUser = author;
     } else {
@@ -48,11 +57,13 @@ function newMessage(d, ENV, client) {
     }
 }
 
-
 function correctCount(author, newNumber ) {
     //set most recent number and user ------------------------------
     lastNumber = newNumber;
     lastUser = author;
+
+    //update last count time --------------------------------------
+    lastCountTime.set(author, Date.now());
 
     //mapOfFame update ---------------------------------------------
     if (!mapOfFame.has(author)) {
@@ -68,7 +79,7 @@ function correctCount(author, newNumber ) {
     }
 
     //Logging ------------------------------------------------------
-    logger.botLog(`${author} had a correct number, with ${newNumber}! They now have ${mapOfFame.get(author)} correct counts.`);
+    logger.log(`${author} had a correct number, with ${newNumber}! They now have ${mapOfFame.get(author)} correct counts.`, 'correct_count', ENV.bs_server_id);
 
     //Daily counts update -------------------------------------------
     const today = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
@@ -76,19 +87,17 @@ function correctCount(author, newNumber ) {
 
 }
 
-
-
 function incorrectCount(d, author, newNumber, ENV, client) {
     console.log(`Incorrect: ${d.author.username}: ${d.content}`);
     //delete the message ---------------------------------------
     const channel = client.channels.cache.get(ENV.bs_counting_id);
     if (channel) {
-            logger.botError(`Deleting message ${d.id} in channel ${d.channel_id}`);
+            logger.log(`Deleting message ${d.id} in channel ${d.channel_id}`, 'deleting_message', ENV.bs_server_id);
             channel.messages.fetch(d.id)
                 .then(message => message.delete())
                 .catch(err => {
             if (err.code === 10008) {
-                logger.botError('Tried to delete a message that does not exist.');
+                logger.log('Tried to delete a message that does not exist.', 'message_not_found', ENV.bs_server_id);
             } else {
                 console.error(err);
             }
@@ -99,37 +108,40 @@ function incorrectCount(d, author, newNumber, ENV, client) {
     currentStreak.set(author, 0);
 
     //update mapOfShame -------------------------------------------
-    if (!mapOfShame.has(author)) {
+    if (author !== client.user.id) {
+       if (!mapOfShame.has(author)) {
             mapOfShame.set(author, 0);
+       }
+        mapOfShame.set(author, mapOfShame.get(author) + 1);
+        saveStats(); 
     }
-    mapOfShame.set(author, mapOfShame.get(author) + 1);
-    saveStats();
+    
 
     //Determine type of incorrect count ---------------------------
-    if (lastUser == author) {
-        logger.botError(`${author} Counted twice in a row! They now have ${mapOfShame.get(author)} incorrect counts.`);
+    if (lastUser === author) {
+        logger.log(`${author} Counted twice in a row! They now have ${mapOfShame.get(author)} incorrect counts.`, 'counted_twice_in_a_row', ENV.bs_server_id);
     } else {
-      logger.botLog(`${author} had a incorrect number, with ${newNumber}! They now have ${mapOfShame.get(author)} incorrect counts.`);
+      logger.log(`${author} had a incorrect number, with ${newNumber}! They now have ${mapOfShame.get(author)} incorrect counts.`, 'incorrect_count', ENV.bs_server_id);
     }
 }
 
-
-
 function saveStats() {
-    logger.botLog('Saving stats to countingStats.json');
-    fs.writeFileSync(
-        path.join(__dirname, 'countingStats.json'),
-        JSON.stringify({
-            shame: Array.from(mapOfShame.entries()),
-            fame: Array.from(mapOfFame.entries()),
-            currentStreak: Array.from(currentStreak.entries()),
-            bestStreak: Array.from(bestStreak.entries()),
-            dailyCounts: Array.from(dailyCounts.entries())
-        }, null, 2)
-    );
+    logger.log('Saving stats to countingStats.json', 'saving_stats', ENV.bs_server_id);
+    try {
+        fs.writeFileSync(
+            path.join(__dirname, 'countingStats.json'),
+            JSON.stringify({
+                shame: Array.from(mapOfShame.entries()),
+                fame: Array.from(mapOfFame.entries()),
+                currentStreak: Array.from(currentStreak.entries()),
+                bestStreak: Array.from(bestStreak.entries()),
+                dailyCounts: Array.from(dailyCounts.entries())
+            }, null, 2)
+        );
+    } catch (err) {
+        logger.log(`Error saving stats: ${err.message}`, 'error_saving_stats', ENV.bs_server_id);
+    }
 }
-
-
 
 function loadStats() {
     try {
@@ -161,12 +173,9 @@ function loadStats() {
             dailyCounts.set(key, value);
         }
     } catch (err) {
-        logger.botLog('No stats file found, starting fresh.');
-        logger.botError('No stats file found, starting fresh.');
+        logger.log('No stats file found, starting fresh.', 'no_stats_file', ENV.bs_server_id);
     }
 }
-
-
 
 function setLastNumber(num) {
     lastNumber = num;
