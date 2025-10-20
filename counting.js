@@ -15,9 +15,10 @@ let dailyCounts = new Map();
 let lastCountTime = new Map();
 let positiveCounts = new Map();
 let negativeCounts = new Map();
+const GOAL_UPDATE_PERCENT_THRESHOLD = 1; // percent change required to edit pinned embed
 
 
-function newMessage(d, ENV, client) {
+async function newMessage(d, ENV, client) {
     let author = d.author.id;
     let content = d.content.trim();
     
@@ -50,7 +51,7 @@ function newMessage(d, ENV, client) {
     if ((lastNumber + 1 === newNumber || lastNumber - 1 === newNumber) && lastUser !== author) {
         //correct
 
-        correctCount(author, newNumber);
+    await correctCount(author, newNumber, client);
     } else if (lastNumber === undefined) {
         //something went wrong
         logger.log('last number not loaded properly or broken', 'last_number_not_loaded', ENV.bs_server_id);
@@ -62,7 +63,7 @@ function newMessage(d, ENV, client) {
     }
 }
 
-function correctCount(author, newNumber ) {
+async function correctCount(author, newNumber, client ) {
 
     // Store previous lastNumber for positive/negative check
     const prevLastNumber = lastNumber;
@@ -102,9 +103,148 @@ function correctCount(author, newNumber ) {
     const today = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
     dailyCounts.set(today, (dailyCounts.get(today) || 0) + 1);
 
+    // Check for active goal completion
+    try {
+        const goalsPath = path.join(__dirname, 'data', 'goals.json');
+        if (fs.existsSync(goalsPath)) {
+            const goalsData = JSON.parse(fs.readFileSync(goalsPath, 'utf8'));
+            const goal = goalsData.current;
+            if (goal && !goal.completedAt && goal.target !== null && goal.target !== undefined) {
+                const target = Number(goal.target);
+                let reached = false;
+                if (isNaN(target)) reached = false;
+                else if (target >= 0) {
+                    if (lastNumber >= target) reached = true;
+                } else {
+                    if (lastNumber <= target) reached = true;
+                }
+
+                // compute progress percent and possibly update pinned embed when percent increased
+                const computePercent = (current, target) => {
+                    const t = Number(target);
+                    if (isNaN(t) || t === 0) return 0;
+                    let percent = 0;
+                    if (t > 0) percent = Math.round((current / t) * 100);
+                    else {
+                        const denom = (0 - t);
+                        const numer = (0 - current);
+                        percent = denom === 0 ? 0 : Math.round((numer / denom) * 100);
+                    }
+                    if (percent < 0) percent = 0;
+                    if (percent > 100) percent = 100;
+                    return percent;
+                };
+
+                const makeBar = (percent, size = 16) => {
+                    const fill = Math.round((percent / 100) * size);
+                    return '█'.repeat(fill) + '░'.repeat(size - fill);
+                };
+
+                const currentPercent = computePercent(lastNumber, goal.target);
+                const lastReported = Number(goal.lastReportedPercent || 0);
+
+                const shouldUpdatePin = (currentPercent - lastReported) >= GOAL_UPDATE_PERCENT_THRESHOLD;
+
+                if (shouldUpdatePin && goal.pinnedMessageId && client) {
+                    try {
+                        const config = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'config.json'), 'utf8'));
+                        const countingChannelId = config.test_counting_id || config.bs_counting_id;
+                        const channel = await client.channels.fetch(countingChannelId).catch(() => null);
+                        if (channel) {
+                            const msg = await channel.messages.fetch(goal.pinnedMessageId).catch(() => null);
+                            if (msg) {
+                                const { EmbedBuilder } = require('discord.js');
+                                const displayDeadline = goal.deadline ? (isNaN(new Date(goal.deadline)) ? String(goal.deadline) : new Date(goal.deadline).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })) : 'None';
+                                const pb = makeBar(currentPercent, 16);
+                                const newEmbed = new EmbedBuilder()
+                                    .setTitle('Counting Goal')
+                                    .setDescription(goal.text)
+                                    .setTimestamp(new Date(goal.createdAt || Date.now()))
+                                    .setColor(0x00AE86)
+                                    .addFields(
+                                        { name: 'Set by', value: `<@${goal.setBy}>`, inline: true },
+                                        { name: 'Target', value: goal.target ? String(goal.target) : 'None', inline: true },
+                                        { name: 'Deadline', value: displayDeadline, inline: true },
+                                        { name: 'Progress', value: `${pb} ${currentPercent}%\n${lastNumber} / ${goal.target}`, inline: false }
+                                    );
+                                await msg.edit({ embeds: [newEmbed] }).catch(() => null);
+                                // persist lastReportedPercent
+                                goal.lastReportedPercent = currentPercent;
+                                fs.writeFileSync(goalsPath, JSON.stringify(goalsData, null, 2), 'utf8');
+                            }
+                        }
+                    } catch (err) {
+                        console.error('Error updating pinned goal message (progress):', err);
+                    }
+                }
+
+                if (reached) {
+                    // mark goal completed
+                    goal.completedAt = new Date().toISOString();
+                    goal.completedBy = author;
+                    // Update pinned message if possible
+                    const config = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'config.json'), 'utf8'));
+                    const countingChannelId = config.test_counting_id || config.bs_counting_id ;
+                    if (goal.pinnedMessageId && countingChannelId && client) {
+                        try {
+                            const channel = await client.channels.fetch(countingChannelId).catch(() => null);
+                            if (channel) {
+                                const msg = await channel.messages.fetch(goal.pinnedMessageId).catch(() => null);
+                                if (msg) {
+                                    // Append completed info to embed
+                                    const embeds = msg.embeds || [];
+                                    let embed = embeds[0] ? embeds[0] : null;
+                                    const { EmbedBuilder } = require('discord.js');
+                                    const newEmbed = new EmbedBuilder()
+                                        .setTitle('Counting Goal')
+                                        .setDescription(goal.text)
+                                        .setTimestamp(new Date().toISOString())
+                                        .setColor(0x00AE86)
+                                        .addFields(
+                                            { name: 'Set by', value: `<@${goal.setBy}>`, inline: true },
+                                            { name: 'Target', value: goal.target ? String(goal.target) : 'None', inline: true },
+                                            { name: 'Deadline', value: goal.deadline ? String(goal.deadline) : 'None', inline: true },
+                                            { name: 'Completed', value: `Yes — <@${author}> at ${goal.completedAt}`, inline: false }
+                                        );
+                                    await msg.edit({ embeds: [newEmbed] }).catch(() => null);
+                                }
+                            }
+                        } catch (err) {
+                            console.error('Error updating pinned goal message:', err);
+                        }
+                    }
+
+                    // Save goal state
+                    fs.writeFileSync(goalsPath, JSON.stringify(goalsData, null, 2), 'utf8');
+
+                    // Announce using logger
+                    try {
+                        logger.log(`Goal reached: ${goal.text} — final number ${lastNumber} (by <@${author}>)`, 'goal_completed', ENV.bs_server_id);
+                    } catch (err) {
+                        console.error('Error logging goal completion:', err);
+                    }
+
+                    // Award achievement to final user (if available)
+                    try {
+                        achievements.awardAchievement(author, 'goal_winner');
+                    } catch (err) {
+                        console.error('Error awarding goal_winner achievement:', err);
+                    }
+                }
+            }
+        }
+    } catch (err) {
+        console.error('Error checking goal completion:', err);
+    }
+
 }
 
 function incorrectCount(d, author, newNumber, ENV, client) {
+    // If the bot sent the message, don't delete or penalize it
+    if (client && client.user && author === client.user.id) {
+        logger.log(`Skipping incorrect handling for bot message ${d.id}`, 'skip_bot_message', ENV.bs_server_id);
+        return;
+    }
     console.log(`Incorrect: ${d.author.username}: ${d.content}`);
     //delete the message ---------------------------------------
     const channel = client.channels.cache.get(ENV.bs_counting_id);

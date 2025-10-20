@@ -17,5 +17,6 @@
     "decreasing_count_1": { "name": "decreasing Counter", "description": "Sent 1 decreasing numbers in the count." },
     "decreasing_count_10": { "name": "decreasing Counter", "description": "Sent 10 decreasing numbers in the count." },
     "decreasing_count_100": { "name": "decreasing Counter", "description": "Sent 100 decreasing numbers in the count." },
-    "decreasing_count_1000": { "name": "decreasing Counter", "description": "Sent 1000 decreasing numbers in the count." }
+    "decreasing_count_1000": { "name": "decreasing Counter", "description": "Sent 1000 decreasing numbers in the count." },
+    "goal_winner": { "name": "Goal Winner", "description": "Was the final counter when a goal was reached." }
 }
