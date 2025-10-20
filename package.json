@@ -16,6 +16,7 @@
   "author": "Gudu0",
   "license": "CC-BY-NC-4.0",
   "dependencies": {
+    "canvas": "^3.2.0",
     "discord.js": "^14.23.2"
   },
   "devDependencies": {

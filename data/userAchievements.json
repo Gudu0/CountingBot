@@ -4,11 +4,28 @@
     "count_10",
     "count_100",
     "increasing_count_1",
-    "decreasing_count_1"
+    "decreasing_count_1",
+    "streak_10"
   ],
   "1077892141663137842": [
     "count_1",
     "increasing_count_1",
     "decreasing_count_1"
+  ],
+  "174007598612217857": [
+    "count_1",
+    "count_10",
+    "count_100",
+    "streak_10"
+  ],
+  "137095778480029697": [
+    "count_1",
+    "count_10",
+    "count_100",
+    "streak_10",
+    "increasing_count_1"
+  ],
+  "249703856676536341": [
+    "count_1"
   ]
 }

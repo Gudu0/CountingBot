@@ -52,7 +52,7 @@ function awardAchievement(userId, achievementId) {
 	const userAchievements = loadUserAchievements();
 	if (!userAchievements[userId]) userAchievements[userId] = [];
 	if (userAchievements[userId].includes(achievementId)) {
-		console.log(`[ACHIEVEMENT] User ${userId} already has achievement: ${achievementId}`);
+		//console.log(`[ACHIEVEMENT] User ${userId} already has achievement: ${achievementId}`);
 		return false;
 	}
 	userAchievements[userId].push(achievementId);
@@ -74,7 +74,7 @@ function checkCountMilestones(userId, totalCount) {
 	let awarded = false;
 	for (const [min, id] of Object.entries(milestones)) {
 		if (totalCount >= Number(min)) {
-			console.log(`[ACHIEVEMENT] Checking count milestone for user ${userId}: totalCount=${totalCount} (milestone: ${min})`);
+			//console.log(`[ACHIEVEMENT] Checking count milestone for user ${userId}: totalCount=${totalCount} (milestone: ${min})`);
 			awarded = awardAchievement(userId, id) || awarded;
 		}
 	}
@@ -94,7 +94,7 @@ function checkPositiveCountMilestones(userId, positiveCount) {
 	let awarded = false;
 	for (const [min, id] of Object.entries(milestones)) {
 		if (positiveCount >= Number(min)) {
-			console.log(`[ACHIEVEMENT] Checking positive count milestone for user ${userId}: positiveCount=${positiveCount} (milestone: ${min})`);
+			//console.log(`[ACHIEVEMENT] Checking positive count milestone for user ${userId}: positiveCount=${positiveCount} (milestone: ${min})`);
 			awarded = awardAchievement(userId, id) || awarded;
 		}
 	}
@@ -112,7 +112,7 @@ function checkNegativeCountMilestones(userId, negativeCount) {
 	let awarded = false;
 	for (const [min, id] of Object.entries(milestones)) {
 		if (negativeCount >= Number(min)) {
-			console.log(`[ACHIEVEMENT] Checking negative count milestone for user ${userId}: negativeCount=${negativeCount} (milestone: ${min})`);
+			//console.log(`[ACHIEVEMENT] Checking negative count milestone for user ${userId}: negativeCount=${negativeCount} (milestone: ${min})`);
 			awarded = awardAchievement(userId, id) || awarded;
 		}
 	}
@@ -131,7 +131,7 @@ function checkStreakMilestones(userId, streak) {
 	let awarded = false;
 	for (const [min, id] of Object.entries(streaks)) {
 		if (streak >= Number(min)) {
-			console.log(`[ACHIEVEMENT] Checking streak milestone for user ${userId}: streak=${streak} (milestone: ${min})`);
+			//console.log(`[ACHIEVEMENT] Checking streak milestone for user ${userId}: streak=${streak} (milestone: ${min})`);
 			awarded = awardAchievement(userId, id) || awarded;
 		}
 	}

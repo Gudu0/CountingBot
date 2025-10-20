@@ -28,7 +28,7 @@ function newMessage(d, ENV, client) {
     if (d.channel_id !== ENV.bs_counting_id) {
         return;
     }  
-
+    
     achievements.checkAndAwardAchievements(d, mapOfFame, currentStreak, positiveCounts, negativeCounts);
 
     if (!/^-?\d+$/.test(content)) {
