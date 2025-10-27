@@ -1,6 +1,8 @@
 const { SlashCommandBuilder, MessageFlags } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
+let sqlite;
+try { sqlite = require('../../db'); } catch { sqlite = null; }
 
 const suggestionsPath = path.join(__dirname, '../../data/suggestions.json');
 
@@ -31,10 +33,17 @@ module.exports = {
 			}
 		}
 
-		suggestions.push({ userId, suggestion, timestamp });
+	suggestions.push({ userId, suggestion, timestamp });
 
 		try {
 			fs.writeFileSync(suggestionsPath, JSON.stringify(suggestions, null, 2), 'utf8');
+			// Also persist in SQLite
+			try {
+				if (sqlite && sqlite.stmts && sqlite.stmts.upsertSuggestion) {
+					const id = `${userId}:${Date.now()}`;
+					sqlite.stmts.upsertSuggestion.run({ id, user_id: String(userId), text: String(suggestion), status: 'open', created_at: Date.now() });
+				}
+			} catch (_) {}
 			await interaction.editReply('Thank you for your suggestion! It has been recorded.');
 		} catch (err) {
 			await interaction.editReply('Sorry, there was an error saving your suggestion.');

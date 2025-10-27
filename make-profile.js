@@ -1,6 +1,12 @@
 const { createCanvas, loadImage } = require('canvas');
 const fs = require('fs');
 const path = require('path');
+let sqlite;
+try {
+    sqlite = require('./db');
+} catch (_) {
+    sqlite = null;
+}
 
 const statsPath = path.join(__dirname, 'data', 'countingStats.json');
 const achievementsPath = path.join(__dirname, 'data', 'userAchievements.json');
@@ -18,10 +24,43 @@ async function makeProfile(userId, username, avatarUrl) {
     const canvas = createCanvas(500, 900);
     const ctx = canvas.getContext('2d');
 
-    // Load data
-    const stats = JSON.parse(fs.readFileSync(statsPath, 'utf8'));
-    const userAchievements = JSON.parse(fs.readFileSync(achievementsPath, 'utf8'));
+    // Load achievement definitions (shared for both backends)
     const achievementDefinitions = JSON.parse(fs.readFileSync(definitionsPath, 'utf8'));
+
+    // Load stats and achievements either from SQLite (preferred) or fallback JSON files
+    let fame = 0, shame = 0, currentStreakVal = 0, bestStreakVal = 0;
+    let earnedAchievementIds = [];
+
+    if (sqlite && sqlite.db) {
+        try {
+            const row = sqlite.db.prepare('SELECT fame, shame, best_streak, current_streak FROM users WHERE user_id = ?').get(String(userId));
+            if (row) {
+                fame = row.fame || 0;
+                shame = row.shame || 0;
+                bestStreakVal = row.best_streak || 0;
+                currentStreakVal = row.current_streak || 0;
+            }
+            const achRows = sqlite.db.prepare('SELECT achievement_id FROM achievements WHERE user_id = ? ORDER BY earned_at').all(String(userId));
+            earnedAchievementIds = (achRows || []).map(r => r.achievement_id);
+        } catch (e) {
+            // Fallback to JSON on any DB error
+            const stats = JSON.parse(fs.readFileSync(statsPath, 'utf8'));
+            const userAchievements = JSON.parse(fs.readFileSync(achievementsPath, 'utf8'));
+            fame = getStat(stats.fame, userId);
+            shame = getStat(stats.shame, userId);
+            currentStreakVal = getStat(stats.currentStreak, userId);
+            bestStreakVal = getStat(stats.bestStreak, userId);
+            earnedAchievementIds = userAchievements[userId] || [];
+        }
+    } else {
+        const stats = JSON.parse(fs.readFileSync(statsPath, 'utf8'));
+        const userAchievements = JSON.parse(fs.readFileSync(achievementsPath, 'utf8'));
+        fame = getStat(stats.fame, userId);
+        shame = getStat(stats.shame, userId);
+        currentStreakVal = getStat(stats.currentStreak, userId);
+        bestStreakVal = getStat(stats.bestStreak, userId);
+        earnedAchievementIds = userAchievements[userId] || [];
+    }
 
     // Background
     ctx.fillStyle = '#7289DA';
@@ -37,11 +76,6 @@ async function makeProfile(userId, username, avatarUrl) {
     ctx.fillStyle = '#fff';
     ctx.fillText(`${username}`, 200, 150);
 
-    const fame = getStat(stats.fame, userId);
-    const shame = getStat(stats.shame, userId);
-    const currentStreak = getStat(stats.currentStreak, userId);
-    const bestStreak = getStat(stats.bestStreak, userId);
-
     // Stats 
     let startStatsY = 210;
     let statcount = 0;
@@ -49,8 +83,8 @@ async function makeProfile(userId, username, avatarUrl) {
     ctx.fillStyle = '#fff';
     ctx.fillText(`Fame: ${fame}`, 20, startStatsY + 30 * statcount); statcount++;
     ctx.fillText(`Shame: ${shame}`, 20, startStatsY + 30 * statcount); statcount++;
-    ctx.fillText(`Current Streak: ${currentStreak}`, 20, startStatsY + 30 * statcount); statcount++;
-    ctx.fillText(`Best Streak: ${bestStreak}`, 20, startStatsY + 30 * statcount); statcount++;
+    ctx.fillText(`Current Streak: ${currentStreakVal}`, 20, startStatsY + 30 * statcount); statcount++;
+    ctx.fillText(`Best Streak: ${bestStreakVal}`, 20, startStatsY + 30 * statcount); statcount++;
 
     // Achievements
     ctx.font = '28px Sans-serif';
@@ -58,7 +92,7 @@ async function makeProfile(userId, username, avatarUrl) {
     ctx.fillText('Achievements:', 20, 350);
 
     ctx.font = '20px Sans-serif';
-    const userAchieves = userAchievements[userId] || [];
+    const userAchieves = earnedAchievementIds;
     let achieveY = 380;
     for (const achieveId of userAchieves) {
         const achieve = achievementDefinitions[achieveId];

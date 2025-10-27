@@ -7,6 +7,8 @@ const ENV = require('./data/config.json');
 
 const definitionsPath = path.join(__dirname, 'data', 'achievementDefinitions.json');
 const userAchievementsPath = path.join(__dirname, 'data', 'userAchievements.json');
+let sqlite;
+try { sqlite = require('./db'); } catch { sqlite = null; }
 
 // Load achievement definitions
 function loadDefinitions() {
@@ -17,19 +19,31 @@ function loadDefinitions() {
 
 // Load user achievements (per userId)
 function loadUserAchievements() {
+	// Prefer SQLite for achievements
+	if (sqlite && sqlite.db) {
+		try {
+			const rows = sqlite.db.prepare('SELECT user_id, achievement_id FROM achievements ORDER BY earned_at').all();
+			const map = {};
+			for (const r of rows) {
+				if (!map[r.user_id]) map[r.user_id] = [];
+				map[r.user_id].push(r.achievement_id);
+			}
+			return map;
+		} catch (e) {
+			// fall through to JSON
+		}
+	}
 	if (!fs.existsSync(userAchievementsPath)) {
 		console.log('[ACHIEVEMENT] No userAchievements file found, returning empty object.');
 		return {};
 	}
 	const data = JSON.parse(fs.readFileSync(userAchievementsPath, 'utf8'));
-	//console.log('[ACHIEVEMENT] Loaded userAchievements:', data);
 	return data;
 }
 
 // Save user achievements
 function saveUserAchievements(data) {
 	fs.writeFileSync(userAchievementsPath, JSON.stringify(data, null, 2), 'utf8');
-	//console.log('[ACHIEVEMENT] Saved userAchievements:', data);
 }
 
 
@@ -58,6 +72,14 @@ function awardAchievement(userId, achievementId) {
 	userAchievements[userId].push(achievementId);
 	console.log(`[ACHIEVEMENT] Awarded achievement ${achievementId} to user ${userId}`);
 	saveUserAchievements(userAchievements);
+	// Also persist in SQLite for durability
+	try {
+		if (sqlite && sqlite.stmts && sqlite.stmts.insertAchievement) {
+			sqlite.stmts.insertAchievement.run({ user_id: String(userId), achievement_id: String(achievementId), earned_at: Date.now() });
+		}
+	} catch (e) {
+		try { logger.log(`SQLite insertAchievement error: ${e.message}`, 'sqlite_error', ENV.bs_server_id); } catch {}
+	}
     notifyAchievement(userId, achievementId);
 	return true;
 }
@@ -147,7 +169,7 @@ function checkAndAwardAchievements(d, fame, streak, positiveCounts, negativeCoun
 	const currentStreak = streak.has(userId) ? streak.get(userId) : 0;
 	const positiveCount = positiveCounts.has(userId) ? positiveCounts.get(userId) : 0;
 	const negativeCount = negativeCounts.has(userId) ? negativeCounts.get(userId) : 0;
-	console.log(`[ACHIEVEMENT] Checking all achievements for user ${userId}: totalCount=${totalCount}, currentStreak=${currentStreak}, positiveCount=${positiveCount}, negativeCount=${negativeCount}`);
+	//console.log(`[ACHIEVEMENT] Checking all achievements for user ${userId}: totalCount=${totalCount}, currentStreak=${currentStreak}, positiveCount=${positiveCount}, negativeCount=${negativeCount}`);
 	checkCountMilestones(userId, totalCount);
 	checkStreakMilestones(userId, currentStreak);
 	checkPositiveCountMilestones(userId, positiveCount);

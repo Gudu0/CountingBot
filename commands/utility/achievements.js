@@ -1,7 +1,7 @@
 const { SlashCommandBuilder, MessageFlags } = require('discord.js');
-const fs = require('fs');
-const path = require('path');
 const achievementCheck = require('../../achievement-check.js');
+let sqlite;
+try { sqlite = require('../../db'); } catch { sqlite = null; }
 
 module.exports = {
     cooldown: 5,
@@ -14,15 +14,24 @@ module.exports = {
                 .setRequired(false)
         ),
     async execute(interaction) {
-        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const user = interaction.options.getUser('user') || interaction.user;
         const userId = user.id;
         console.log(`[ACHIEVEMENTS CMD] Looking up achievements for user: ${user.username} (${userId})`);
-        const userAchievements = achievementCheck.loadUserAchievements();
-        console.log('[ACHIEVEMENTS CMD] Loaded userAchievements:', userAchievements);
         const definitions = achievementCheck.loadDefinitions();
-        //console.log('[ACHIEVEMENTS CMD] Loaded definitions:', definitions);
-        const achievements = userAchievements[userId] || [];
+        let achievements = [];
+        if (sqlite && sqlite.db) {
+            try {
+                const rows = sqlite.db.prepare('SELECT achievement_id FROM achievements WHERE user_id=? ORDER BY earned_at').all(String(userId));
+                achievements = (rows || []).map(r => r.achievement_id);
+            } catch (e) {
+                const userAchievements = achievementCheck.loadUserAchievements();
+                achievements = userAchievements[userId] || [];
+            }
+        } else {
+            const userAchievements = achievementCheck.loadUserAchievements();
+            achievements = userAchievements[userId] || [];
+        }
         console.log(`[ACHIEVEMENTS CMD] Achievements for user ${userId}:`, achievements);
         if (achievements.length === 0) {
             console.log(`[ACHIEVEMENTS CMD] No achievements found for user ${userId}`);

@@ -1,3 +1,11 @@
+# Ignore local dependencies and SQLite database file
+node_modules/
+data/counting.db
+
+# Optional: logs and OS files
+*.log
+.DS_Store
+Thumbs.db
 node_modules/
 eslint.config.js
 NonCore/
@@ -6,3 +14,5 @@ data/config.json
 data/logSettings.json
 CountingBot.code-workspace
 data/suggestions.json
+data/counting.db-wal
+data/counting.db-shm

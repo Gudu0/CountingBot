@@ -5,6 +5,8 @@ const path = require('path');
 const goalsPath = path.join(__dirname, '../../data/goals.json');
 const statsPath = path.join(__dirname, '../../data/countingStats.json');
 const counting = require('../../counting.js');
+let sqlite;
+try { sqlite = require('../../db'); } catch { sqlite = null; }
 
 function loadGoals() {
   if (!fs.existsSync(goalsPath)) return { current: null };
@@ -14,6 +16,35 @@ function loadGoals() {
 function loadStats() {
   if (!fs.existsSync(statsPath)) return {};
   try { return JSON.parse(fs.readFileSync(statsPath, 'utf8')); } catch (e) { return {}; }
+}
+
+function loadGoalFromSQL() {
+  try {
+    if (!sqlite || !sqlite.db) return null;
+    // Current goal: most recent row with no completed_at
+    const row = sqlite.db.prepare(`
+      SELECT id, text, target, pinned_message_id, created_at, completed_at, set_by, deadline, last_reported_percent, completed_by
+      FROM goals
+      WHERE completed_at IS NULL
+      ORDER BY created_at DESC
+      LIMIT 1
+    `).get();
+    if (!row) return null;
+    return {
+      id: row.id,
+      text: row.text,
+      target: row.target,
+      setBy: row.set_by,
+      deadline: row.deadline,
+      createdAt: row.created_at,
+      completedAt: row.completed_at,
+      pinned_message_id: row.pinned_message_id,
+      lastReportedPercent: row.last_reported_percent,
+      completedBy: row.completed_by
+    };
+  } catch {
+    return null;
+  }
 }
 
 function makeProgressBar(current, target, size = 12) {
@@ -41,8 +72,12 @@ module.exports = {
 
   async execute(interaction) {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-    const goals = loadGoals();
-    const goal = goals.current;
+    // Prefer SQL source of truth; fallback to JSON file if needed
+    let goal = loadGoalFromSQL();
+    if (!goal) {
+      const goals = loadGoals();
+      goal = goals.current;
+    }
     if (!goal) {
       return interaction.editReply({ content: 'There is no active counting goal.' });
     }

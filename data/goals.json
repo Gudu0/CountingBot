@@ -1,11 +1,11 @@
 {
   "current": {
-    "text": "First Goal!",
-    "target": 200,
-    "deadline": "2025-10-22T04:00:00.000Z",
+    "text": "Reach 1000!",
+    "target": 1000,
+    "deadline": "2025-10-26T07:16:38.000Z",
     "setBy": "733113260496126053",
-    "createdAt": "2025-10-20T08:37:00.951Z",
-    "pinnedMessageId": "1429750242202353766",
-    "lastReportedPercent": 84
+    "createdAt": "2025-10-24T00:17:01.031Z",
+    "pinnedMessageId": "1429751809722814614",
+    "lastReportedPercent": 56
   }
 }

@@ -136,16 +136,25 @@ module.exports = {
 			await command.execute(interaction);
 		} catch (error) {
 			console.error(error);
-			if (interaction.replied || interaction.deferred) {
-				await interaction.followUp({
-					content: 'There was an error while executing this command!',
-					flags: MessageFlags.Ephemeral,
-				});
-			} else {
-				await interaction.reply({
-					content: 'There was an error while executing this command!',
-					flags: MessageFlags.Ephemeral,
-				});
+			try {
+				if (interaction.replied || interaction.deferred) {
+					await interaction.followUp({
+						content: 'There was an error while executing this command!',
+						flags: MessageFlags.Ephemeral,
+					});
+				} else {
+					await interaction.reply({
+						content: 'There was an error while executing this command!',
+						flags: MessageFlags.Ephemeral,
+					});
+				}
+			} catch (e) {
+				// Swallow Unknown interaction (10062) to avoid crashing the process
+				if (e && (e.code === 10062 || e.message?.includes('Unknown interaction'))) {
+					console.warn('Interaction already acknowledged or expired. Skipping error reply.');
+				} else {
+					console.error('Error replying to interaction error:', e);
+				}
 			}
 		}
 	},

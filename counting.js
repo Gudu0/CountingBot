@@ -4,6 +4,18 @@ const path = require('node:path');
 const ENV = require("./data/config.json");
 const logger = require('./logger.js');
 const achievements = require('./achievement-check.js');
+const goalProgress = require('./goal-progress.js');
+let sqlite;
+try {
+    // Lazy import SQLite statements; keep bot running even if DB missing
+    sqlite = require('./db');
+} catch (_) {
+    sqlite = null;
+}
+
+function getConfig() {
+    return JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'config.json'), 'utf8'));
+}
 
 let lastNumber;
 let lastUser;
@@ -17,53 +29,148 @@ let positiveCounts = new Map();
 let negativeCounts = new Map();
 const GOAL_UPDATE_PERCENT_THRESHOLD = 1; // percent change required to edit pinned embed
 
+function upsertUserStats(author) {
+    if (!sqlite || !sqlite.stmts || !sqlite.stmts.upsertUser) return;
+    try {
+        const row = {
+            user_id: String(author),
+            fame: mapOfFame.get(author) || 0,
+            shame: mapOfShame.get(author) || 0,
+            best_streak: bestStreak.get(author) || 0,
+            current_streak: currentStreak.get(author) || 0,
+            pos_counts: positiveCounts.get(author) || 0,
+            neg_counts: negativeCounts.get(author) || 0,
+            updated_at: Date.now()
+        };
+        sqlite.stmts.upsertUser.run(row);
+    } catch (err) {
+        // Do not crash counting on DB issues; just log
+        try { logger.log(`SQLite upsertUser error: ${err.message}`, 'sqlite_error', ENV.bs_server_id); } catch {}
+    }
+}
+
+function toIntBool(v) { return v ? 1 : 0; }
+
+function logMessageToSQLite(d, extras) {
+    if (!sqlite || !sqlite.stmts || !sqlite.stmts.insertMessage) return;
+    try {
+        const content = (d.content || '').toString();
+        const now = Date.now();
+        const parsedNum = (typeof extras.parsedNumber === 'number' && !isNaN(extras.parsedNumber)) ? extras.parsedNumber : null;
+        const deltaNum = (typeof extras.numberDelta === 'number' && isFinite(extras.numberDelta)) ? extras.numberDelta : null;
+        const row = {
+            message_id: String(d.id || ''),
+            author_id: String(d.author?.id || extras.author || ''),
+            guild_id: String(d.guild_id || ''),
+            timestamp: now,
+            content,
+            message_length: content.length,
+            is_numeric: toIntBool(!!extras.isNumeric),
+            parsed_number: parsedNum,
+            has_leading_zero: toIntBool(!!extras.hasLeadingZero),
+            number_delta: deltaNum,
+            is_correct: toIntBool(!!extras.isCorrect),
+            hour: new Date(now).getHours(),
+            weekday: new Date(now).getDay()
+        };
+        sqlite.stmts.insertMessage.run(row);
+    } catch (err) {
+        try { logger.log(`SQLite insertMessage error: ${err.message}`, 'sqlite_error', ENV.bs_server_id); } catch {}
+    }
+}
+
+function saveRuntimeState() {
+    if (!sqlite || !sqlite.stmts || !sqlite.stmts.setKV) return;
+    try {
+        if (typeof lastNumber === 'number' && lastUser) {
+            sqlite.stmts.setKV.run({ key: 'last_number', value: String(lastNumber) });
+            sqlite.stmts.setKV.run({ key: 'last_user', value: String(lastUser) });
+        }
+    } catch (err) {
+        try { logger.log(`SQLite setKV error: ${err.message}`, 'sqlite_error', ENV.bs_server_id); } catch {}
+    }
+}
+
+function tryLoadRuntimeState() {
+    if (!sqlite || !sqlite.stmts || !sqlite.stmts.getKV) return;
+    try {
+        const lastNumRow = sqlite.stmts.getKV.get('last_number');
+        const lastUsrRow = sqlite.stmts.getKV.get('last_user');
+        if (lastNumRow && typeof lastNumRow.value === 'string') {
+            const n = Number(lastNumRow.value);
+            if (!isNaN(n)) lastNumber = n;
+        }
+        if (lastUsrRow && typeof lastUsrRow.value === 'string') {
+            lastUser = lastUsrRow.value;
+        }
+    } catch (err) {
+        // ignore, continue with defaults
+    }
+}
+
+// Attempt to load runtime state on module load
+tryLoadRuntimeState();
+
 
 async function newMessage(d, ENV, client) {
     let author = d.author.id;
     let content = d.content.trim();
     
 
-    if (d.guild_id !== ENV.bs_server_id) {
-        return;
-    }
-    if (d.channel_id !== ENV.bs_counting_id) {
-        return;
-    }  
+    if (d.guild_id !== ENV.bs_server_id) {return;}
+    if (d.channel_id !== ENV.bs_counting_id) {return;}  
     
-    achievements.checkAndAwardAchievements(d, mapOfFame, currentStreak, positiveCounts, negativeCounts);
+    let shouldRunAchievements = false; // flips true once we begin count processing
 
-    if (!/^-?\d+$/.test(content)) {
-        // Mark as incorrect
-        incorrectCount(d, author, NaN, ENV, client);
-        logger.log(`${author} sent a non-numeric message!`, 'non_numeric', ENV.bs_server_id);
-        return;
-    }
-    //in the counting channel in bsg
-    let newNumber = parseInt(content); 
+    try {
+        shouldRunAchievements = true;
 
-    const now = Date.now();
-    if (lastCountTime.has(author) && now - lastCountTime.get(author) < 5000) {
-        // Too soon, mark as incorrect
-        incorrectCount(d, author, newNumber, ENV, client);
-        logger.log(`${author} is counting too fast!`, 'counted_too_fast', ENV.bs_server_id);
-        return;
-    }
-    if ((lastNumber + 1 === newNumber || lastNumber - 1 === newNumber) && lastUser !== author) {
-        //correct
+        // Check if content is a valid number
+        if (!/^-?\d+$/.test(content)) {
+            // Mark as incorrect
+            incorrectCount(d, author, NaN, ENV, client);
+            logger.log(`${author} sent a non-numeric message!`, 'non_numeric', ENV.bs_server_id);
+            return;
+        }
+        if ((/^-?0\d+/.test(content))) { // matches "01", "-01", "0002", etc.
+            incorrectCount(d, author, NaN, ENV, client);
+            logger.log(`${author} sent a number with leading zeros!`, 'leading_zeros', ENV.bs_server_id);
+            return;
+        }
 
-    await correctCount(author, newNumber, client);
-    } else if (lastNumber === undefined) {
-        //something went wrong
-        logger.log('last number not loaded properly or broken', 'last_number_not_loaded', ENV.bs_server_id);
-        lastNumber = newNumber;
-        lastUser = author;
-    } else {
-        //incorrect
-        incorrectCount(d, author, newNumber, ENV, client);
+        //in the counting channel in bsg
+        let newNumber = parseInt(content, 10); 
+
+        const now = Date.now();
+        const config = getConfig(); // reload config to get latest delay
+        if (lastCountTime.has(author) && now - lastCountTime.get(author) < config.counting_delay) {
+            // Too soon, mark as incorrect
+            incorrectCount(d, author, newNumber, ENV, client);
+            logger.log(`${author} is counting too fast!`, 'counted_too_fast', ENV.bs_server_id);
+            return;
+        }
+        if ((lastNumber + 1 === newNumber || lastNumber - 1 === newNumber) && lastUser !== author) {
+            //correct
+
+            await correctCount(d, author, newNumber, client);
+        } else if (lastNumber === undefined) {
+            //something went wrong
+            logger.log('last number not loaded properly or broken', 'last_number_not_loaded', ENV.bs_server_id);
+            lastNumber = newNumber;
+            lastUser = author;
+            saveRuntimeState();
+        } else {
+            //incorrect
+            incorrectCount(d, author, newNumber, ENV, client);
+        } 
+    } finally {
+        if (shouldRunAchievements) {
+            achievements.checkAndAwardAchievements(d, mapOfFame, currentStreak, positiveCounts, negativeCounts);
+        }
     }
 }
 
-async function correctCount(author, newNumber, client ) {
+async function correctCount(d, author, newNumber, client ) {
 
     // Store previous lastNumber for positive/negative check
     const prevLastNumber = lastNumber;
@@ -71,6 +178,7 @@ async function correctCount(author, newNumber, client ) {
     //set most recent number and user ------------------------------
     lastNumber = newNumber;
     lastUser = author;
+    saveRuntimeState();
 
     //update last count time --------------------------------------
     lastCountTime.set(author, Date.now());
@@ -96,143 +204,35 @@ async function correctCount(author, newNumber, client ) {
         bestStreak.set(author, currentStreak.get(author));
     }
 
+    // Dual-write to SQLite users table
+    upsertUserStats(author);
+
     //Logging ------------------------------------------------------
     logger.log(`${author} had a correct number, with ${newNumber}! They now have ${mapOfFame.get(author)} correct counts.`, 'correct_count', ENV.bs_server_id);
+
+    // Log message to SQLite (correct)
+    logMessageToSQLite(d, {
+        author,
+        isNumeric: true,
+        parsedNumber: newNumber,
+        hasLeadingZero: false,
+        numberDelta: (typeof prevLastNumber === 'number') ? (newNumber - prevLastNumber) : null,
+        isCorrect: true
+    });
 
     //Daily counts update -------------------------------------------
     const today = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
     dailyCounts.set(today, (dailyCounts.get(today) || 0) + 1);
 
-    // Check for active goal completion
+    // Check for active goal completion (delegated)
     try {
-        const goalsPath = path.join(__dirname, 'data', 'goals.json');
-        if (fs.existsSync(goalsPath)) {
-            const goalsData = JSON.parse(fs.readFileSync(goalsPath, 'utf8'));
-            const goal = goalsData.current;
-            if (goal && !goal.completedAt && goal.target !== null && goal.target !== undefined) {
-                const target = Number(goal.target);
-                let reached = false;
-                if (isNaN(target)) reached = false;
-                else if (target >= 0) {
-                    if (lastNumber >= target) reached = true;
-                } else {
-                    if (lastNumber <= target) reached = true;
-                }
-
-                // compute progress percent and possibly update pinned embed when percent increased
-                const computePercent = (current, target) => {
-                    const t = Number(target);
-                    if (isNaN(t) || t === 0) return 0;
-                    let percent = 0;
-                    if (t > 0) percent = Math.round((current / t) * 100);
-                    else {
-                        const denom = (0 - t);
-                        const numer = (0 - current);
-                        percent = denom === 0 ? 0 : Math.round((numer / denom) * 100);
-                    }
-                    if (percent < 0) percent = 0;
-                    if (percent > 100) percent = 100;
-                    return percent;
-                };
-
-                const makeBar = (percent, size = 16) => {
-                    const fill = Math.round((percent / 100) * size);
-                    return '█'.repeat(fill) + '░'.repeat(size - fill);
-                };
-
-                const currentPercent = computePercent(lastNumber, goal.target);
-                const lastReported = Number(goal.lastReportedPercent || 0);
-
-                const shouldUpdatePin = (currentPercent - lastReported) >= GOAL_UPDATE_PERCENT_THRESHOLD;
-
-                if (shouldUpdatePin && goal.pinnedMessageId && client) {
-                    try {
-                        const config = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'config.json'), 'utf8'));
-                        const countingChannelId = config.test_counting_id || config.bs_counting_id;
-                        const channel = await client.channels.fetch(countingChannelId).catch(() => null);
-                        if (channel) {
-                            const msg = await channel.messages.fetch(goal.pinnedMessageId).catch(() => null);
-                            if (msg) {
-                                const { EmbedBuilder } = require('discord.js');
-                                const displayDeadline = goal.deadline ? (isNaN(new Date(goal.deadline)) ? String(goal.deadline) : new Date(goal.deadline).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })) : 'None';
-                                const pb = makeBar(currentPercent, 16);
-                                const newEmbed = new EmbedBuilder()
-                                    .setTitle('Counting Goal')
-                                    .setDescription(goal.text)
-                                    .setTimestamp(new Date(goal.createdAt || Date.now()))
-                                    .setColor(0x00AE86)
-                                    .addFields(
-                                        { name: 'Set by', value: `<@${goal.setBy}>`, inline: true },
-                                        { name: 'Target', value: goal.target ? String(goal.target) : 'None', inline: true },
-                                        { name: 'Deadline', value: displayDeadline, inline: true },
-                                        { name: 'Progress', value: `${pb} ${currentPercent}%\n${lastNumber} / ${goal.target}`, inline: false }
-                                    );
-                                await msg.edit({ embeds: [newEmbed] }).catch(() => null);
-                                // persist lastReportedPercent
-                                goal.lastReportedPercent = currentPercent;
-                                fs.writeFileSync(goalsPath, JSON.stringify(goalsData, null, 2), 'utf8');
-                            }
-                        }
-                    } catch (err) {
-                        console.error('Error updating pinned goal message (progress):', err);
-                    }
-                }
-
-                if (reached) {
-                    // mark goal completed
-                    goal.completedAt = new Date().toISOString();
-                    goal.completedBy = author;
-                    // Update pinned message if possible
-                    const config = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'config.json'), 'utf8'));
-                    const countingChannelId = config.test_counting_id || config.bs_counting_id ;
-                    if (goal.pinnedMessageId && countingChannelId && client) {
-                        try {
-                            const channel = await client.channels.fetch(countingChannelId).catch(() => null);
-                            if (channel) {
-                                const msg = await channel.messages.fetch(goal.pinnedMessageId).catch(() => null);
-                                if (msg) {
-                                    // Append completed info to embed
-                                    const embeds = msg.embeds || [];
-                                    let embed = embeds[0] ? embeds[0] : null;
-                                    const { EmbedBuilder } = require('discord.js');
-                                    const newEmbed = new EmbedBuilder()
-                                        .setTitle('Counting Goal')
-                                        .setDescription(goal.text)
-                                        .setTimestamp(new Date().toISOString())
-                                        .setColor(0x00AE86)
-                                        .addFields(
-                                            { name: 'Set by', value: `<@${goal.setBy}>`, inline: true },
-                                            { name: 'Target', value: goal.target ? String(goal.target) : 'None', inline: true },
-                                            { name: 'Deadline', value: goal.deadline ? String(goal.deadline) : 'None', inline: true },
-                                            { name: 'Completed', value: `Yes — <@${author}> at ${goal.completedAt}`, inline: false }
-                                        );
-                                    await msg.edit({ embeds: [newEmbed] }).catch(() => null);
-                                }
-                            }
-                        } catch (err) {
-                            console.error('Error updating pinned goal message:', err);
-                        }
-                    }
-
-                    // Save goal state
-                    fs.writeFileSync(goalsPath, JSON.stringify(goalsData, null, 2), 'utf8');
-
-                    // Announce using logger
-                    try {
-                        logger.log(`Goal reached: ${goal.text} — final number ${lastNumber} (by <@${author}>)`, 'goal_completed', ENV.bs_server_id);
-                    } catch (err) {
-                        console.error('Error logging goal completion:', err);
-                    }
-
-                    // Award achievement to final user (if available)
-                    try {
-                        achievements.awardAchievement(author, 'goal_winner');
-                    } catch (err) {
-                        console.error('Error awarding goal_winner achievement:', err);
-                    }
-                }
-            }
-        }
+        await goalProgress.handleGoalProgress({
+            lastNumber,
+            author,
+            client,
+            thresholdPercent: GOAL_UPDATE_PERCENT_THRESHOLD,
+            envServerId: ENV.bs_server_id
+        });
     } catch (err) {
         console.error('Error checking goal completion:', err);
     }
@@ -271,6 +271,8 @@ function incorrectCount(d, author, newNumber, ENV, client) {
        }
         mapOfShame.set(author, mapOfShame.get(author) + 1);
         saveStats(); 
+        // Dual-write to SQLite users table
+        upsertUserStats(author);
     }
     
 
@@ -280,6 +282,20 @@ function incorrectCount(d, author, newNumber, ENV, client) {
     } else {
       logger.log(`${author} had a incorrect number, with ${newNumber}! They now have ${mapOfShame.get(author)} incorrect counts.`, 'incorrect_count', ENV.bs_server_id);
     }
+
+    // Log message to SQLite (incorrect)
+    const isNumeric = /^-?\d+$/.test(d.content || '');
+    const hasLeadingZero = /^-?0\d+/.test(d.content || '');
+    const parsedNumber = (typeof newNumber === 'number' && !isNaN(newNumber)) ? newNumber : null;
+    const delta = (parsedNumber !== null && typeof lastNumber === 'number') ? (parsedNumber - lastNumber) : null;
+    logMessageToSQLite(d, {
+        author,
+        isNumeric,
+        parsedNumber,
+        hasLeadingZero,
+        numberDelta: delta,
+        isCorrect: false
+    });
 }
 
 function saveStats() {
@@ -303,6 +319,33 @@ function saveStats() {
 }
 
 function loadStats() {
+    // Prefer loading from SQLite users table; fallback to JSON if unavailable
+    if (sqlite && sqlite.db) {
+        try {
+            const rows = sqlite.db.prepare('SELECT user_id, fame, shame, best_streak, current_streak, pos_counts, neg_counts FROM users').all();
+            mapOfShame.clear();
+            mapOfFame.clear();
+            currentStreak.clear();
+            bestStreak.clear();
+            positiveCounts.clear();
+            negativeCounts.clear();
+            for (const r of rows) {
+                const id = String(r.user_id);
+                if (r.shame != null) mapOfShame.set(id, r.shame);
+                if (r.fame != null) mapOfFame.set(id, r.fame);
+                if (r.current_streak != null) currentStreak.set(id, r.current_streak);
+                if (r.best_streak != null) bestStreak.set(id, r.best_streak);
+                if (r.pos_counts != null) positiveCounts.set(id, r.pos_counts);
+                if (r.neg_counts != null) negativeCounts.set(id, r.neg_counts);
+            }
+            // dailyCounts remains in-memory and persisted to JSON by saveStats; commands like /graph can read from SQL instead
+            return;
+        } catch (e) {
+            try { logger.log(`SQLite loadStats error: ${e.message}`, 'sqlite_error', ENV.bs_server_id); } catch {}
+        }
+    }
+
+    // Fallback to prior JSON format
     try {
         const data = fs.readFileSync(path.join(__dirname, 'data', 'countingStats.json'), 'utf8');
         const stats = JSON.parse(data);

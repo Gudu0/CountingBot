@@ -1,6 +1,9 @@
 const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder, MessageFlags } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('node:crypto');
+let sqlite;
+try { sqlite = require('../../db'); } catch { sqlite = null; }
 
 const goalsPath = path.join(__dirname, '../../data/goals.json');
 const configPath = path.join(__dirname, '../../data/config.json');
@@ -147,6 +150,31 @@ module.exports = {
 
     goals.current = newGoal;
     saveGoals(goals);
+
+    // Upsert into SQLite goals table (idempotent)
+    try {
+      if (sqlite && sqlite.stmts && sqlite.stmts.upsertGoal) {
+        const id = crypto.createHash('sha1').update(`${newGoal.text}|${newGoal.target}|${newGoal.createdAt}`).digest('hex');
+        sqlite.stmts.upsertGoal.run({
+          id,
+          text: String(newGoal.text),
+          target: (typeof newGoal.target === 'number') ? newGoal.target : null,
+          pinned_message_id: newGoal.pinnedMessageId ? String(newGoal.pinnedMessageId) : null,
+          created_at: Date.parse(newGoal.createdAt) || Date.now(),
+          completed_at: null,
+          set_by: String(setBy),
+          deadline: newGoal.deadline ? String(newGoal.deadline) : null,
+          last_reported_percent: typeof newGoal.lastReportedPercent === 'number' ? newGoal.lastReportedPercent : 0,
+          completed_by: null
+        });
+        // Initialize last percent in KV to avoid immediate update churn
+        try {
+          if (sqlite.stmts.setKV && typeof newGoal.lastReportedPercent === 'number') {
+            sqlite.stmts.setKV.run({ key: 'goal_current_last_percent', value: String(newGoal.lastReportedPercent) });
+          }
+        } catch {}
+      }
+    } catch (_) {}
 
     await interaction.editReply('Goal saved and pinned (if permissions allowed).');
   }

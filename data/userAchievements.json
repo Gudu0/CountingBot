@@ -5,34 +5,87 @@
     "count_100",
     "increasing_count_1",
     "decreasing_count_1",
-    "streak_10"
+    "streak_10",
+    "increasing_count_10",
+    "goal_winner",
+    "increasing_count_100"
   ],
   "1077892141663137842": [
     "count_1",
     "increasing_count_1",
-    "decreasing_count_1"
+    "decreasing_count_1",
+    "count_10",
+    "increasing_count_10",
+    "streak_10",
+    "count_100",
+    "increasing_count_100",
+    "goal_winner",
+    "streak_50"
   ],
   "174007598612217857": [
     "count_1",
     "count_10",
     "count_100",
     "streak_10",
-    "increasing_count_1"
+    "increasing_count_1",
+    "increasing_count_10"
   ],
   "137095778480029697": [
     "count_1",
     "count_10",
     "count_100",
     "streak_10",
-    "increasing_count_1"
+    "increasing_count_1",
+    "increasing_count_10",
+    "goal_winner",
+    "decreasing_count_1",
+    "decreasing_count_10",
+    "increasing_count_100",
+    "streak_50"
   ],
   "249703856676536341": [
-    "count_1"
+    "count_1",
+    "decreasing_count_1",
+    "count_10",
+    "streak_10"
   ],
   "1023081973553565756": [
     "count_1",
     "count_10",
     "count_100",
-    "decreasing_count_1"
+    "decreasing_count_1",
+    "streak_10",
+    "decreasing_count_10",
+    "increasing_count_1",
+    "decreasing_count_100"
+  ],
+  "447699566347943956": [
+    "count_1",
+    "count_10",
+    "count_100",
+    "streak_10",
+    "increasing_count_1"
+  ],
+  "111403531608522752": [
+    "count_1",
+    "count_10",
+    "streak_10",
+    "decreasing_count_1",
+    "decreasing_count_10",
+    "count_100",
+    "increasing_count_1",
+    "decreasing_count_100",
+    "increasing_count_10"
+  ],
+  "247447848239497217": [
+    "count_1",
+    "decreasing_count_1",
+    "increasing_count_1",
+    "count_10",
+    "streak_10",
+    "decreasing_count_10",
+    "count_100",
+    "decreasing_count_100",
+    "increasing_count_10"
   ]
 }

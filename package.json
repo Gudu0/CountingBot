@@ -4,7 +4,9 @@
   "description": "Counting bot for bsg",
   "main": "index.js",
   "scripts": {
-    "test": "test"
+    "test": "test",
+    "migrate:sqlite": "node migrate-json-to-sqlite.js",
+    "db:inspect": "node inspect-db.js"
   },
   "repository": {
     "type": "git",
@@ -16,6 +18,7 @@
   "author": "Gudu0",
   "license": "CC-BY-NC-4.0",
   "dependencies": {
+    "better-sqlite3": "^9.6.0",
     "canvas": "^3.2.0",
     "discord.js": "^14.23.2"
   },

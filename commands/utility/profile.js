@@ -12,7 +12,7 @@ module.exports = {
             .setRequired(false)),
 
 	async execute(interaction) {
-        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const user = interaction.options.getUser('user') || interaction.user;
         const userId = user.id;
         const username = user.username;
