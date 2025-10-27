@@ -16,7 +16,6 @@ CREATE TABLE IF NOT EXISTS messages (
   message_id TEXT PRIMARY KEY,
   author_id TEXT,
   guild_id TEXT,
-  channel_id TEXT,
   timestamp INTEGER,
   content TEXT,
   message_length INTEGER,
@@ -27,9 +26,6 @@ CREATE TABLE IF NOT EXISTS messages (
   is_correct INTEGER,
   hour INTEGER,
   weekday INTEGER,
-  mentions_count INTEGER,
-  attachments_count INTEGER,
-  roles_count INTEGER,
   deleted INTEGER DEFAULT 0
 );
 
@@ -80,7 +76,7 @@ CREATE TABLE IF NOT EXISTS kv (
 CREATE INDEX IF NOT EXISTS idx_messages_ts ON messages(timestamp);
 CREATE INDEX IF NOT EXISTS idx_messages_author_ts ON messages(author_id, timestamp);
 CREATE INDEX IF NOT EXISTS idx_messages_correct_ts ON messages(is_correct, timestamp);
-CREATE INDEX IF NOT EXISTS idx_messages_guild_channel_ts ON messages(guild_id, channel_id, timestamp);
+CREATE INDEX IF NOT EXISTS idx_messages_guild_ts ON messages(guild_id, timestamp);
 `);
 
 
@@ -90,6 +86,67 @@ try {
   const hasDeleted = cols.some(c => c.name === 'deleted');
   if (!hasDeleted) {
     db.exec(`ALTER TABLE messages ADD COLUMN deleted INTEGER DEFAULT 0;`);
+  }
+  // Drop legacy unused columns if present: channel_id, mentions_count, attachments_count, roles_count
+  const hasChannelId = cols.some(c => c.name === 'channel_id');
+  const hasMentions = cols.some(c => c.name === 'mentions_count');
+  const hasAttach = cols.some(c => c.name === 'attachments_count');
+  const hasRoles = cols.some(c => c.name === 'roles_count');
+  if (hasChannelId || hasMentions || hasAttach || hasRoles) {
+    // First, drop legacy index referencing channel_id if it exists
+    try { db.exec(`DROP INDEX IF EXISTS idx_messages_guild_channel_ts;`); } catch {}
+    // Attempt modern DROP COLUMN migrations (SQLite >= 3.35)
+    let usedRebuild = false;
+    db.exec('BEGIN');
+    try {
+      if (hasChannelId) db.exec(`ALTER TABLE messages DROP COLUMN channel_id;`);
+      if (hasMentions) db.exec(`ALTER TABLE messages DROP COLUMN mentions_count;`);
+      if (hasAttach) db.exec(`ALTER TABLE messages DROP COLUMN attachments_count;`);
+      if (hasRoles) db.exec(`ALTER TABLE messages DROP COLUMN roles_count;`);
+    } catch (e) {
+      // Fallback: rebuild table without the dropped columns
+      usedRebuild = true;
+    }
+    if (usedRebuild) {
+      // Cancel the current transaction and rebuild
+      try { db.exec('ROLLBACK'); } catch {}
+      db.exec('BEGIN');
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS messages_new (
+          message_id TEXT PRIMARY KEY,
+          author_id TEXT,
+          guild_id TEXT,
+          timestamp INTEGER,
+          content TEXT,
+          message_length INTEGER,
+          is_numeric INTEGER,
+          parsed_number INTEGER,
+          has_leading_zero INTEGER,
+          number_delta INTEGER,
+          is_correct INTEGER,
+          hour INTEGER,
+          weekday INTEGER,
+          deleted INTEGER DEFAULT 0
+        );
+      `);
+      db.exec(`
+        INSERT INTO messages_new (
+          message_id, author_id, guild_id, timestamp, content, message_length,
+          is_numeric, parsed_number, has_leading_zero, number_delta, is_correct,
+          hour, weekday, deleted
+        )
+        SELECT 
+          message_id, author_id, guild_id, timestamp, content, message_length,
+          is_numeric, parsed_number, has_leading_zero, number_delta, is_correct,
+          hour, weekday, COALESCE(deleted, 0)
+        FROM messages;
+      `);
+      db.exec(`DROP TABLE messages;`);
+      db.exec(`ALTER TABLE messages_new RENAME TO messages;`);
+    }
+    db.exec('COMMIT');
+    // Recreate the simplified index
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_messages_guild_ts ON messages(guild_id, timestamp);`);
   }
 } catch {}
 
