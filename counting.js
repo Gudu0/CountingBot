@@ -149,7 +149,7 @@ async function newMessage(d, ENV, client) {
             logger.log(`${author} is counting too fast!`, 'counted_too_fast', ENV.bs_server_id);
             return;
         }
-        if ((lastNumber + 1 === newNumber || lastNumber - 1 === newNumber) && lastUser !== author) {
+        if ((lastNumber + 1 === newNumber /* || lastNumber - 1 === newNumber*/) && lastUser !== author) {
             //correct
 
             await correctCount(d, author, newNumber, client);
