@@ -61,6 +61,7 @@ const initializeWebsocket = () => {
 
     ws.on("error", function error(e) {
         logger.log(e, 'gateway_error', ENV.bs_server_id);
+        logger.log("Gateway error occurred " + '@733113260496126053', ENV.bs_server_id);
         console.log(e);
     });
 
@@ -139,7 +140,7 @@ for (const folder of commandFolders) {
 		if ('data' in command && 'execute' in command) {
 			client.commands.set(command.data.name, command);
 		} else {
-			logger.log(`[WARNING] The command at ${filePath} is missing a required "data" or "execute" property.`, 'command_missing_data_or_execute', ENV.bs_server_id);
+			logger.log(`[WARNING] The command at ${filePath} is missing a required "data" or "execute" property.`  + '@733113260496126053', 'command_missing_data_or_execute', ENV.bs_server_id);
             console.log(`[WARNING] The command at ${filePath} is missing a required "data" or "execute" property.`);
 		}
 	}
@@ -180,7 +181,7 @@ client.once('clientReady', async () => {
         console.log('Logging initialized!');
         logger.log('Logging initialized!', 'logging_initialized', ENV.bs_server_id);
     } else {
-        logger.log('Log channel not found!', 'log_channel_not_found', ENV.bs_server_id);
+        logger.log('Log channel not found!' + '@733113260496126053', 'log_channel_not_found', ENV.bs_server_id);
         console.log('Log channel not found!');
     }
     const logThread = await client.channels.fetch(ENV.log_thread_id);
@@ -188,10 +189,10 @@ client.once('clientReady', async () => {
         logger.setErrorThread(logThread);
         logger.log('Error logging initialized in thread!', 'error_logging_initialized', ENV.bs_server_id);
     } else {
-        logger.log('Log thread not found or is not a thread!', 'log_thread_not_found', ENV.bs_server_id);
+        logger.log('Log thread not found or is not a thread!' + '@733113260496126053', 'log_thread_not_found', ENV.bs_server_id);
     }
     if (!channel) {
-        logger.log('Counting channel not found!', 'counting_channel_not_found', ENV.bs_server_id);
+        logger.log('Counting channel not found!' + '@733113260496126053', 'counting_channel_not_found', ENV.bs_server_id);
         console.log('Counting channel not found!');
         return;
     }
@@ -211,7 +212,7 @@ client.once('clientReady', async () => {
             }
         }
     } catch (err) {
-        logger.log(`Error fetching last message: ${err.message}`, 'error_fetching_last_message', ENV.bs_server_id);
+        logger.log(`Error fetching last message: ${err.message}` + '@733113260496126053', 'error_fetching_last_message', ENV.bs_server_id);
         console.error('Error fetching last message:', err);
 
     }

@@ -45,7 +45,7 @@ function upsertUserStats(author) {
         sqlite.stmts.upsertUser.run(row);
     } catch (err) {
         // Do not crash counting on DB issues; just log
-        try { logger.log(`SQLite upsertUser error: ${err.message}`, 'sqlite_error', ENV.bs_server_id); } catch {}
+        try { logger.log(`SQLite upsertUser error: ${err.message}` + '@733113260496126053', 'sqlite_error', ENV.bs_server_id); } catch {}
     }
 }
 
@@ -75,7 +75,7 @@ function logMessageToSQLite(d, extras) {
         };
         sqlite.stmts.insertMessage.run(row);
     } catch (err) {
-        try { logger.log(`SQLite insertMessage error: ${err.message}`, 'sqlite_error', ENV.bs_server_id); } catch {}
+        try { logger.log(`SQLite insertMessage error: ${err.message}` + '@733113260496126053', 'sqlite_error', ENV.bs_server_id); } catch {}
     }
 }
 
@@ -87,7 +87,7 @@ function saveRuntimeState() {
             sqlite.stmts.setKV.run({ key: 'last_user', value: String(lastUser) });
         }
     } catch (err) {
-        try { logger.log(`SQLite setKV error: ${err.message}`, 'sqlite_error', ENV.bs_server_id); } catch {}
+        try { logger.log(`SQLite setKV error: ${err.message}` + '@733113260496126053', 'sqlite_error', ENV.bs_server_id); } catch {}
     }
 }
 
@@ -155,7 +155,7 @@ async function newMessage(d, ENV, client) {
             await correctCount(d, author, newNumber, client);
         } else if (lastNumber === undefined) {
             //something went wrong
-            logger.log('last number not loaded properly or broken', 'last_number_not_loaded', ENV.bs_server_id);
+            logger.log('last number not loaded properly or broken' + '@733113260496126053', 'last_number_not_loaded', ENV.bs_server_id);
             lastNumber = newNumber;
             lastUser = author;
             saveRuntimeState();
@@ -254,7 +254,7 @@ function incorrectCount(d, author, newNumber, ENV, client) {
                 .then(message => message.delete())
                 .catch(err => {
             if (err.code === 10008) {
-                logger.log('Tried to delete a message that does not exist.', 'message_not_found', ENV.bs_server_id);
+                logger.log('Tried to delete a message that does not exist.' + '@733113260496126053', 'message_not_found', ENV.bs_server_id);
             } else {
                 console.error(err);
             }
@@ -314,7 +314,7 @@ function saveStats() {
             }, null, 2)
         );
     } catch (err) {
-        logger.log(`Error saving stats: ${err.message}`, 'error_saving_stats', ENV.bs_server_id);
+        logger.log(`Error saving stats: ${err.message}` + '@733113260496126053', 'error_saving_stats', ENV.bs_server_id);
     }
 }
 
@@ -341,7 +341,7 @@ function loadStats() {
             // dailyCounts remains in-memory and persisted to JSON by saveStats; commands like /graph can read from SQL instead
             return;
         } catch (e) {
-            try { logger.log(`SQLite loadStats error: ${e.message}`, 'sqlite_error', ENV.bs_server_id); } catch {}
+            try { logger.log(`SQLite loadStats error: ${e.message}` + '@733113260496126053', 'sqlite_error', ENV.bs_server_id); } catch {}
         }
     }
 
@@ -385,7 +385,7 @@ function loadStats() {
             negativeCounts.set(key, value);
         }
     } catch (err) {
-        logger.log('No stats file found, starting fresh.', 'no_stats_file', ENV.bs_server_id);
+        logger.log('No stats file found, starting fresh.' + ' @733113260496126053', 'no_stats_file', ENV.bs_server_id);
     }
 }
 

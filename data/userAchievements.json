@@ -29,7 +29,8 @@
     "streak_10",
     "increasing_count_1",
     "increasing_count_10",
-    "streak_50"
+    "streak_50",
+    "increasing_count_100"
   ],
   "137095778480029697": [
     "count_1",
@@ -49,7 +50,8 @@
     "decreasing_count_1",
     "count_10",
     "streak_10",
-    "decreasing_count_10"
+    "decreasing_count_10",
+    "increasing_count_1"
   ],
   "1023081973553565756": [
     "count_1",
@@ -59,14 +61,18 @@
     "streak_10",
     "decreasing_count_10",
     "increasing_count_1",
-    "decreasing_count_100"
+    "decreasing_count_100",
+    "increasing_count_10"
   ],
   "447699566347943956": [
     "count_1",
     "count_10",
     "count_100",
     "streak_10",
-    "increasing_count_1"
+    "increasing_count_1",
+    "increasing_count_10",
+    "decreasing_count_1",
+    "streak_50"
   ],
   "111403531608522752": [
     "count_1",
@@ -77,7 +83,8 @@
     "count_100",
     "increasing_count_1",
     "decreasing_count_100",
-    "increasing_count_10"
+    "increasing_count_10",
+    "streak_50"
   ],
   "247447848239497217": [
     "count_1",
@@ -93,9 +100,96 @@
   ],
   "1203645736856846346": [
     "count_1",
-    "increasing_count_1"
+    "increasing_count_1",
+    "decreasing_count_1"
   ],
   "1012186086279217192": [
+    "count_1",
+    "increasing_count_1",
+    "decreasing_count_1",
+    "count_10",
+    "streak_10",
+    "increasing_count_10"
+  ],
+  "385943549331636226": [
+    "count_1",
+    "increasing_count_1",
+    "decreasing_count_1",
+    "count_10",
+    "increasing_count_10",
+    "streak_10",
+    "decreasing_count_10"
+  ],
+  "725139119491121162": [
+    "count_1",
+    "increasing_count_1"
+  ],
+  "921411342848655382": [
+    "count_1",
+    "increasing_count_1"
+  ],
+  "650618655213748289": [
+    "count_1",
+    "increasing_count_1"
+  ],
+  "547616420549099540": [
+    "count_1",
+    "increasing_count_1"
+  ],
+  "227998165603713025": [
+    "count_1",
+    "increasing_count_1"
+  ],
+  "696097198789754890": [
+    "count_1",
+    "increasing_count_1"
+  ],
+  "532326524112732253": [
+    "count_1",
+    "increasing_count_1"
+  ],
+  "862585060846731295": [
+    "count_1",
+    "increasing_count_1"
+  ],
+  "619352566421127190": [
+    "count_1",
+    "decreasing_count_1"
+  ],
+  "1441791253762146504": [
+    "count_1",
+    "decreasing_count_1",
+    "increasing_count_1"
+  ],
+  "140959122592890881": [
+    "count_1",
+    "decreasing_count_1"
+  ],
+  "352552345520832512": [
+    "count_1",
+    "increasing_count_1"
+  ],
+  "663396768590987325": [
+    "count_1",
+    "decreasing_count_1"
+  ],
+  "1398346257365205192": [
+    "count_1",
+    "increasing_count_1"
+  ],
+  "1166603306009903126": [
+    "count_1",
+    "increasing_count_1"
+  ],
+  "446641030402670593": [
+    "count_1",
+    "increasing_count_1"
+  ],
+  "507860873751298048": [
+    "count_1",
+    "increasing_count_1"
+  ],
+  "673293553119526968": [
     "count_1",
     "increasing_count_1"
   ]

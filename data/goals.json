@@ -1,11 +1,11 @@
 {
   "current": {
-    "text": "Reach 1000!",
-    "target": 1000,
-    "deadline": "2025-10-26T07:16:38.000Z",
+    "text": "Reach 1200!",
+    "target": 1200,
+    "deadline": "2025-12-01T08:00:00.000Z",
     "setBy": "733113260496126053",
-    "createdAt": "2025-10-24T00:17:01.031Z",
+    "createdAt": "2025-11-23T05:36:10.716Z",
     "pinnedMessageId": "1429751809722814614",
-    "lastReportedPercent": 56
+    "lastReportedPercent": 84
   }
 }

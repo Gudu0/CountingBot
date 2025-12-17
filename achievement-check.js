@@ -47,7 +47,6 @@ function saveUserAchievements(data) {
 }
 
 
-
 // Call this after awarding an achievement
 function notifyAchievement(userId, achievementId) {
     const achievement = definitions[achievementId];
@@ -78,7 +77,7 @@ function awardAchievement(userId, achievementId) {
 			sqlite.stmts.insertAchievement.run({ user_id: String(userId), achievement_id: String(achievementId), earned_at: Date.now() });
 		}
 	} catch (e) {
-		try { logger.log(`SQLite insertAchievement error: ${e.message}`, 'sqlite_error', ENV.bs_server_id); } catch {}
+		try { logger.log(`SQLite insertAchievement error: ${e.message}` + '@733113260496126053', 'sqlite_error', ENV.bs_server_id); } catch {}
 	}
     notifyAchievement(userId, achievementId);
 	return true;
@@ -104,7 +103,6 @@ function checkCountMilestones(userId, totalCount) {
 }
 
 
-
 // Check and award positive count achievements
 function checkPositiveCountMilestones(userId, positiveCount) {
 	const milestones = {
@@ -124,6 +122,7 @@ function checkPositiveCountMilestones(userId, positiveCount) {
 }
 
 // Check and award negative count achievements
+/*
 function checkNegativeCountMilestones(userId, negativeCount) {
 	const milestones = {
 		1: 'decreasing_count_1',
@@ -135,11 +134,12 @@ function checkNegativeCountMilestones(userId, negativeCount) {
 	for (const [min, id] of Object.entries(milestones)) {
 		if (negativeCount >= Number(min)) {
 			//console.log(`[ACHIEVEMENT] Checking negative count milestone for user ${userId}: negativeCount=${negativeCount} (milestone: ${min})`);
-			awarded = awardAchievement(userId, id) || awarded;
+			// awarded = awardAchievement(userId, id) || awarded; //disableing award giving. 	
 		}
 	}
-	return awarded;
+	return false; //hardcoded false, negative numbers are to be disabled.
 }
+*/
 
 // Check and award streak achievements
 function checkStreakMilestones(userId, streak) {
@@ -168,12 +168,12 @@ function checkAndAwardAchievements(d, fame, streak, positiveCounts, negativeCoun
 	const totalCount = fame.has(userId) ? fame.get(userId) : 0;
 	const currentStreak = streak.has(userId) ? streak.get(userId) : 0;
 	const positiveCount = positiveCounts.has(userId) ? positiveCounts.get(userId) : 0;
-	const negativeCount = negativeCounts.has(userId) ? negativeCounts.get(userId) : 0;
+	// const negativeCount = negativeCounts.has(userId) ? negativeCounts.get(userId) : 0;
 	//console.log(`[ACHIEVEMENT] Checking all achievements for user ${userId}: totalCount=${totalCount}, currentStreak=${currentStreak}, positiveCount=${positiveCount}, negativeCount=${negativeCount}`);
 	checkCountMilestones(userId, totalCount);
 	checkStreakMilestones(userId, currentStreak);
 	checkPositiveCountMilestones(userId, positiveCount);
-	checkNegativeCountMilestones(userId, negativeCount);
+	// checkNegativeCountMilestones(userId, negativeCount);
 }
 
 
