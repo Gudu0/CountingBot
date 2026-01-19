@@ -1,0 +1,18 @@
+{
+  "nextId" : 3,
+  "suggestions" : [ {
+    "id" : 1,
+    "guildId" : 0,
+    "authorId" : 0,
+    "authorTag" : null,
+    "text" : "",
+    "createdAtMillis" : 1768825799948
+  }, {
+    "id" : 2,
+    "guildId" : 0,
+    "authorId" : 733113260496126053,
+    "authorTag" : null,
+    "text" : "test",
+    "createdAtMillis" : 1768805335174
+  } ]
+}
