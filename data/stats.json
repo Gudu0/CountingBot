@@ -261,13 +261,13 @@
       "negCounts" : 270
     },
     "733113260496126053" : {
-      "correct" : 606,
-      "incorrect" : 152,
-      "currentStreak" : 20,
+      "correct" : 608,
+      "incorrect" : 155,
+      "currentStreak" : 1,
       "bestStreak" : 41,
-      "lastCorrectAtMs" : 0,
-      "lastIncorrectAtMs" : 0,
-      "posCounts" : 388,
+      "lastCorrectAtMs" : 1768864757682,
+      "lastIncorrectAtMs" : 1768864737712,
+      "posCounts" : 390,
       "negCounts" : 1
     },
     "1398346257365205192" : {
