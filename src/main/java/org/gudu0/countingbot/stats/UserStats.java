@@ -5,6 +5,7 @@ public class UserStats {
     public long correct = 0;
     public long incorrect = 0;
 
+
     // streak = consecutive correct counts (not total chain streak, just their own)
     public long currentStreak = 0;
     public long bestStreak = 0;

@@ -6,7 +6,7 @@ import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import org.gudu0.countingbot.counting.StateStore;
-import org.gudu0.countingbot.config.BotConfig;
+import org.gudu0.countingbot.config.GuildConfig;
 import org.gudu0.countingbot.util.ConsoleLog;
 
 import java.util.concurrent.*;
@@ -14,7 +14,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 @SuppressWarnings("unused")
 public class GoalsService {
-    private final BotConfig cfg;
+    private final GuildConfig cfg;
     private final GoalsStore goalsStore;
     private final StateStore stateStore;
 
@@ -27,7 +27,7 @@ public class GoalsService {
     @SuppressWarnings("FieldCanBeLocal")
     private final long updatePeriodSeconds = 15;
 
-    public GoalsService(BotConfig cfg, GoalsStore goalsStore, StateStore stateStore) {
+    public GoalsService(GuildConfig cfg, GoalsStore goalsStore, StateStore stateStore) {
         this.cfg = cfg;
         this.goalsStore = goalsStore;
         this.stateStore = stateStore;

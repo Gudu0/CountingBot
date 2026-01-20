@@ -2,6 +2,8 @@ package org.gudu0.countingbot.achievements;
 
 import org.gudu0.countingbot.counting.CountingState;
 import org.gudu0.countingbot.counting.StateStore;
+import org.gudu0.countingbot.guild.GuildContext;
+import org.gudu0.countingbot.guild.GuildManager;
 import org.gudu0.countingbot.logging.LogService;
 import org.gudu0.countingbot.stats.StatsStore;
 import org.gudu0.countingbot.stats.UserStats;
@@ -11,16 +13,39 @@ import java.util.List;
 
 public class AchievementsService {
     private final AchievementsStore store;
-    private final StateStore stateStore;
+
+    // Multi-guild: counting state is per guild.
+    private final GuildManager guilds;
+
+    // Legacy fallback (single guild) so older code can still construct this.
+    private final StateStore legacyStateStore;
+
     private final StatsStore statsStore;
     private final LogService logs;
 
     @SuppressWarnings("SpellCheckingInspection")
     private final List<AchievementDef> defs = AchievementsCatalog.all();
 
+    /**
+     * Multi-guild constructor.
+     * Achievements are global (stored under data/global/achievements.json), but
+     * counting snapshots (streak/lastNumber) come from the triggering guild.
+     */
+    public AchievementsService(AchievementsStore store, GuildManager guilds, StatsStore statsStore, LogService logs) {
+        this.store = store;
+        this.guilds = guilds;
+        this.legacyStateStore = null;
+        this.statsStore = statsStore;
+        this.logs = logs;
+    }
+
+    /**
+     * Legacy constructor (single guild). Keep this around so older code doesn't explode.
+     */
     public AchievementsService(AchievementsStore store, StateStore stateStore, StatsStore statsStore, LogService logs) {
         this.store = store;
-        this.stateStore = stateStore;
+        this.guilds = null;
+        this.legacyStateStore = stateStore;
         this.statsStore = statsStore;
         this.logs = logs;
     }
@@ -36,18 +61,32 @@ public class AchievementsService {
         }
     }
 
+    private StateStore stateStoreFor(long guildId) {
+        if (guilds != null) {
+            GuildContext ctx = guilds.get(guildId);
+            return ctx.stateStore;
+        }
+        return legacyStateStore;
+    }
+
     public void onTrigger(AchievementTrigger trigger, long guildId, long userId) {
         long now = System.currentTimeMillis();
 
         // Build snapshots under locks (short + safe)
         AchievementContext.CountingSnapshot cs;
-        synchronized (stateStore.lock) {
-            CountingState s = stateStore.state();
-            cs = new AchievementContext.CountingSnapshot(
-                    s.lastNumber,
-                    s.globalStreakCurrent,
-                    s.globalStreakBest
-            );
+        StateStore ss = stateStoreFor(guildId);
+        if (ss == null) {
+            // Should not happen unless constructed wrong.
+            cs = new AchievementContext.CountingSnapshot(-1, 0, 0);
+        } else {
+            synchronized (ss.lock) {
+                CountingState s = ss.state();
+                cs = new AchievementContext.CountingSnapshot(
+                        s.lastNumber,
+                        s.globalStreakCurrent,
+                        s.globalStreakBest
+                );
+            }
         }
 
         AchievementContext.UserStatsSnapshot us;
@@ -79,8 +118,8 @@ public class AchievementsService {
 
                     if (def.logOnUnlock && logs != null) {
                         // No mention ping in logs; keep it plain.
-                        logs.log("Achievement unlocked: " + def.title + ", by <@" + userId + ">!");
-                        ConsoleLog.info("Achievements", "Unlocked id=" + def.id + " title=\"" + def.title + "\" userId=" + userId);
+                        logs.log(guildId, "Achievement unlocked: " + def.title + ", by <@" + userId + ">!");
+                        ConsoleLog.info("Achievements", "Unlocked id=" + def.id + " title=\"" + def.title + "\" userId=" + userId + " guildId=" + guildId);
                     }
                 }
             }
@@ -89,7 +128,7 @@ public class AchievementsService {
         }
     }
 
-    public void unlockById(@SuppressWarnings("unused") long guildId, long userId, String achievementId) {
+    public void unlockById(long guildId, long userId, String achievementId) {
         long now = System.currentTimeMillis();
 
         AchievementDef def = null;
@@ -106,9 +145,8 @@ public class AchievementsService {
             store.markDirty();
 
             if (def.logOnUnlock && logs != null) {
-                logs.log("Achievement unlocked: " + def.title + ", by <@" + userId + ">!");
+                logs.log(guildId, "Achievement unlocked: " + def.title + ", by <@" + userId + ">!");
             }
         }
     }
-
 }

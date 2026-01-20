@@ -3,74 +3,77 @@ package org.gudu0.countingbot;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
-import net.dv8tion.jda.api.requests.GatewayIntent;
 import org.gudu0.countingbot.config.BotConfig;
+import org.gudu0.countingbot.guild.GuildContext;
 import org.gudu0.countingbot.util.ConsoleLog;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * One-time checks that prevent "silent failure" when the bot is missing access.
- * <p>
- * Important behavior: if deletion is enabled in config but the bot lacks
- * "Manage Messages" in the counting channel, we automatically disable deletion
- * (in memory) and log loudly.
+ * Startup safety checks.
+ *
+ * Multi-guild refactor:
+ * - runForGuild(JDA, GuildContext) should be used from Main.
+ * - Legacy run(JDA, BotConfig, AtomicBoolean) is kept so older code still compiles.
  */
 public final class SafetyChecks {
+
     private SafetyChecks() {}
 
-    public static void run(JDA jda, BotConfig cfg, AtomicBoolean enforceDelete) {
-        // Intent sanity (you still must enable Message Content in the Discord Dev Portal)
-        if (!jda.getGatewayIntents().contains(GatewayIntent.MESSAGE_CONTENT)) {
-            System.err.println("[SAFETY] MESSAGE_CONTENT intent is NOT enabled in code. Counting will not work.");
-        }
+    /**
+     * Multi-guild: validate one guild context, disable enforceDeleteRuntime if missing perms.
+     */
+    public static void runForGuild(JDA jda, GuildContext ctx) {
+        long guildId = ctx.guildId;
 
-        Guild guild = jda.getGuildById(cfg.guildId);
+        Guild guild = jda.getGuildById(guildId);
         if (guild == null) {
-            System.err.println("[SAFETY] Guild not found: " + cfg.guildId + " (check data/config.json)");
-            enforceDelete.set(false);
+            ctx.enforceDeleteRuntime.set(false);
+            ConsoleLog.warn("Safety", "Guild missing in JDA cache: guildId=" + guildId + " (enforceDelete disabled)");
             return;
         }
 
-        TextChannel ch = guild.getTextChannelById(cfg.countingChannelId);
-        if (ch == null) {
-            System.err.println("[SAFETY] Counting channel not found in guild: " + cfg.countingChannelId);
-            enforceDelete.set(false);
+        String channelId = ctx.cfg.countingChannelId;
+        if (channelId == null || channelId.isBlank() || "0".equals(channelId)) {
+            ctx.enforceDeleteRuntime.set(false);
+            ConsoleLog.warn("Safety", "countingChannelId not configured: guildId=" + guildId + " (enforceDelete disabled)");
             return;
         }
 
-        Member self = guild.getSelfMember();
-
-        boolean canView = self.hasPermission(ch, Permission.VIEW_CHANNEL);
-        boolean canHistory = self.hasPermission(ch, Permission.MESSAGE_HISTORY);
-        boolean canManage = self.hasPermission(ch, Permission.MESSAGE_MANAGE);
-
-        if (!canView) {
-            System.err.println("[SAFETY] Missing VIEW_CHANNEL in counting channel. Bot cannot function.");
-            enforceDelete.set(false);
+        TextChannel channel = jda.getTextChannelById(channelId);
+        if (channel == null) {
+            ctx.enforceDeleteRuntime.set(false);
+            ConsoleLog.warn("Safety", "Counting channel not found: guildId=" + guildId + " channelId=" + channelId + " (enforceDelete disabled)");
             return;
         }
 
-        if (!canHistory) {
-            System.err.println("[SAFETY] Missing MESSAGE_HISTORY. Startup resync may fail.");
+        // Print a human-friendly status line (matches your logs style)
+        System.out.println("[SAFETY] Guild OK: " + guild.getName()
+                + " | Channel OK: #" + channel.getName()
+                + " | enforceDelete=" + ctx.enforceDeleteRuntime.get()
+                + " | delay=" + ctx.cfg.countingDelaySeconds + "s");
+
+        boolean canView = channel.getGuild().getSelfMember().hasPermission(channel, Permission.VIEW_CHANNEL);
+        boolean canHistory = channel.getGuild().getSelfMember().hasPermission(channel, Permission.MESSAGE_HISTORY);
+        boolean canManage = channel.getGuild().getSelfMember().hasPermission(channel, Permission.MESSAGE_MANAGE);
+
+        if (ctx.enforceDeleteRuntime.get() && !canManage) {
+            ctx.enforceDeleteRuntime.set(false);
+            ConsoleLog.warn("Safety", "Missing MANAGE_MESSAGES in counting channel; enforcement disabled guildId=" + guildId);
         }
 
-        if (enforceDelete.get() && !canManage) {
-            System.err.println("[SAFETY] Config says enforceDelete=true but bot lacks MANAGE_MESSAGES. Disabling deletion.");
-            enforceDelete.set(false);
+        boolean runtime = ctx.cfg.enforceDelete && canView && canHistory && canManage;
+
+        if (ctx.cfg.enforceDelete && !runtime) {
+            ConsoleLog.warn("Safety", "guildId=" + ctx.guildId + " enforceDelete requested but perms missing -> enforceDeleteRuntime=false");
         }
 
-        System.out.println("[SAFETY] Guild OK: " + guild.getName() +
-                " | Channel OK: #" + ch.getName() +
-                " | enforceDelete=" + enforceDelete.get() +
-                " | delay=" + cfg.countingDelaySeconds + "s");
+        ctx.enforceDeleteRuntime.set(runtime);
 
-        ConsoleLog.info("Safety",
-                "Perms in #" + ch.getName() + ": VIEW=" + true +
-                        " HISTORY=" + canHistory + " MANAGE_MESSAGES=" + canManage +
-                        " | enforceDelete=" + enforceDelete.get());
+        ConsoleLog.info("Safety", "guildId=" + ctx.guildId
+                + " cfg.enforceDelete=" + ctx.cfg.enforceDelete
+                + " -> enforceDeleteRuntime=" + ctx.enforceDeleteRuntime.get());
 
     }
 }

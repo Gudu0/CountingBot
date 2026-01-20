@@ -4,9 +4,12 @@ import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import org.gudu0.countingbot.counting.CountingListener;
-import org.gudu0.countingbot.util.ConsoleLog;
 
+/**
+ * /resync (per guild)
+ */
 public class ResyncListener extends ListenerAdapter {
+
     private final CountingListener counting;
 
     public ResyncListener(CountingListener counting) {
@@ -15,36 +18,30 @@ public class ResyncListener extends ListenerAdapter {
 
     @Override
     public void onSlashCommandInteraction(SlashCommandInteractionEvent event) {
-        if (!event.getName().equals("resync")) return;
-        ConsoleLog.info("Command - " + this.getClass().getSimpleName(),
-                "/" + event.getName()
-                        + (event.getSubcommandName() != null ? " " + event.getSubcommandName() : "")
-                        + " by userId=" + event.getUser().getId()
-                        + " name=" + event.getUser().getName()
-                        + " guildId=" + (event.getGuild() != null ? event.getGuild().getId() : "DM")
-                        + " channelId=" + event.getChannel().getId());
+        if (!"resync".equals(event.getName())) return;
 
-        if (event.getMember() == null || !event.getMember().hasPermission(Permission.BAN_MEMBERS)) {
-            event.reply("You don't have permission to use this command.")
-                    .setEphemeral(true).queue();
-            ConsoleLog.warn("Command", "Denied (missing permission) userId=" + event.getUser().getId());
+        if (event.getGuild() == null) {
+            event.reply("This command can only be used in a server.").setEphemeral(true).queue();
             return;
         }
 
-        event.deferReply(true).queue(); // ephemeral
+        if (event.getMember() == null || !event.getMember().hasPermission(Permission.BAN_MEMBERS)) {
+            event.reply("You don't have permission to use this.").setEphemeral(true).queue();
+            return;
+        }
 
-        counting.resyncNow(event.getJDA(), r -> {
+        long guildId = event.getGuild().getIdLong();
+
+        event.reply("Resyncing...").setEphemeral(true).queue();
+
+        counting.resyncNow(event.getJDA(), guildId, r -> {
             if (!r.found()) {
-                event.getHook().editOriginal("Resync complete: **no valid count found** in recent history.").queue();
-                return;
+                event.getHook().editOriginal("Resync complete: no valid count found in last 10 messages.").queue();
+            } else {
+                event.getHook().editOriginal(
+                        "Resync complete: last valid = **" + r.number() + "** (user <@" + r.userId() + ">)."
+                ).queue();
             }
-
-            event.getHook().editOriginal(
-                    "Resynced.\n" +
-                            "Last number: **" + r.number() + "**\n" +
-                            "Last user: <@" + r.userId() + ">\n" +
-                            "Last messageId: `" + r.messageId() + "`"
-            ).queue();
         });
     }
 }

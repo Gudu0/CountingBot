@@ -3,18 +3,18 @@ package org.gudu0.countingbot.suggestions;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
-import org.gudu0.countingbot.config.BotConfig;
+import org.gudu0.countingbot.config.GlobalConfig;
 import org.gudu0.countingbot.util.ConsoleLog;
 
 import java.time.Instant;
 
 public class SuggestionsService {
-    private final BotConfig cfg;
+    private final GlobalConfig cfg;
     private final SuggestionsStore store;
 
     private volatile JDA jda;
 
-    public SuggestionsService(BotConfig cfg, SuggestionsStore store) {
+    public SuggestionsService(GlobalConfig cfg, SuggestionsStore store) {
         this.cfg = cfg;
         this.store = store;
     }

@@ -2,89 +2,100 @@ package org.gudu0.countingbot.commands;
 
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
-import org.gudu0.countingbot.counting.StateStore;
 import org.gudu0.countingbot.counting.CountingState;
+import org.gudu0.countingbot.guild.GuildContext;
+import org.gudu0.countingbot.guild.GuildManager;
+import org.gudu0.countingbot.stats.StatsData;
 import org.gudu0.countingbot.stats.StatsStore;
 import org.gudu0.countingbot.stats.UserStats;
-import org.gudu0.countingbot.util.ConsoleLog;
 
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
 
+/**
+ * Global leaderboard for user stats (fame/shame), plus guild-scoped streak summary.
+ */
 public class LeaderboardListener extends ListenerAdapter {
-    private final StatsStore stats;
-    private final StateStore stateStore; // optional (for global streak later)
 
-    public LeaderboardListener(StatsStore stats, StateStore stateStore) {
+    private final StatsStore stats;
+    private final GuildManager guilds;
+
+    public LeaderboardListener(StatsStore stats, GuildManager guilds) {
         this.stats = stats;
-        this.stateStore = stateStore;
+        this.guilds = guilds;
     }
 
     @Override
     public void onSlashCommandInteraction(SlashCommandInteractionEvent event) {
-        if (!event.getName().equals("leaderboard")) return;
+        if (!"leaderboard".equals(event.getName())) return;
 
-        ConsoleLog.info("Command - " + this.getClass().getSimpleName(),
-                "/" + event.getName()
-                        + (event.getSubcommandName() != null ? " " + event.getSubcommandName() : "")
-                        + " by userId=" + event.getUser().getId()
-                        + " name=" + event.getUser().getName()
-                        + " guildId=" + (event.getGuild() != null ? event.getGuild().getId() : "DM")
-                        + " channelId=" + event.getChannel().getId());
-
-
-        // Snapshot to avoid concurrent modification mid-sort
-        Map<Long, UserStats> users = Map.copyOf(stats.data().users);
-
-        var topFame = topN(users, true);
-        var topShame = topN(users, false);
-
-        StringBuilder sb = new StringBuilder();
-        sb.append("** Fame (Correct) — Top 5**\n");
-        append(sb, topFame, true);
-
-        sb.append("\n** Shame (Incorrect) — Top 5**\n");
-        append(sb, topShame, false);
-
-        // Optional: once you add global streak fields, show them here
-        CountingState state = stateStore.state();
-        if (state.globalStreakBest > 0 || state.globalStreakCurrent > 0) {
-            sb.append("\n** Global Streak**\n")
-                    .append("Current: **").append(state.globalStreakCurrent).append("**\n")
-                    .append("Best: **").append(state.globalStreakBest).append("**\n");
-        }
-
-        event.reply(sb.toString()).setEphemeral(true).queue();
-    }
-
-    private List<Map.Entry<Long, UserStats>> topN(Map<Long, UserStats> users, boolean fame) {
-        return users.entrySet().stream()
-                .filter(e -> (fame ? e.getValue().correct : e.getValue().incorrect) > 0)
-                .sorted((a, b) -> {
-                    long av = fame ? a.getValue().correct : a.getValue().incorrect;
-                    long bv = fame ? b.getValue().correct : b.getValue().incorrect;
-                    int cmp = Long.compare(bv, av);
-                    if (cmp != 0) return cmp;
-                    return Long.compare(a.getKey(), b.getKey()); // tie-break stable
-                })
-                .limit(5)
-                .collect(Collectors.toList());
-    }
-
-    private void append(StringBuilder sb, List<Map.Entry<Long, UserStats>> list, boolean fame) {
-        if (list.isEmpty()) {
-            sb.append("_No data yet._\n");
+        if (event.getGuild() == null) {
+            event.reply("This command can only be used in a server.").setEphemeral(true).queue();
             return;
         }
 
-        int rank = 1;
-        for (var e : list) {
-            long userId = e.getKey();
-            UserStats s = e.getValue();
-            long value = fame ? s.correct : s.incorrect;
+        long guildId = event.getGuild().getIdLong();
 
-            sb.append(rank).append(". <@").append(userId).append("> — **").append(value).append("**\n");
-            rank++;
+        // Guild streak snapshot (per guild)
+        long last;
+        long streak;
+        long best;
+        GuildContext ctx = guilds.get(guildId);
+        synchronized (ctx.stateStore.lock) {
+            CountingState s = ctx.stateStore.state();
+            last = s.lastNumber;
+            streak = s.globalStreakCurrent;
+            best = s.globalStreakBest;
         }
+
+        // Global leaderboards (across all guilds)
+        StatsData data;
+        synchronized (stats.lock) {
+            data = stats.data();
+        }
+
+        // Top 10 fame (global)
+        List<Map.Entry<Long, UserStats>> topFame = data.users.entrySet().stream()
+                .sorted(Comparator.comparingLong((Map.Entry<Long, UserStats> e) -> e.getValue().correct).reversed())
+                .limit(10)
+                .toList();
+
+        // Top 10 shame (global)
+        List<Map.Entry<Long, UserStats>> topShame = data.users.entrySet().stream()
+                .sorted(Comparator.comparingLong((Map.Entry<Long, UserStats> e) -> e.getValue().incorrect).reversed())
+                .limit(10)
+                .toList();
+
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("**Guild Streak (this server)**\n");
+        sb.append("Last valid: ").append(last).append("\n");
+        sb.append("Current streak: ").append(streak).append("\n");
+        sb.append("Best streak: ").append(best).append("\n\n");
+
+        sb.append("**Top Fame (global)**\n");
+        if (topFame.isEmpty()) {
+            sb.append("(no data yet)\n");
+        } else {
+            for (int i = 0; i < topFame.size(); i++) {
+                long userId = topFame.get(i).getKey();
+                UserStats u = topFame.get(i).getValue();
+                sb.append(i + 1).append(". <@").append(userId).append("> — ").append(u.correct).append("\n");
+            }
+        }
+
+        sb.append("\n**Top Shame (global)**\n");
+        if (topShame.isEmpty()) {
+            sb.append("(no data yet)\n");
+        } else {
+            for (int i = 0; i < topShame.size(); i++) {
+                long userId = topShame.get(i).getKey();
+                UserStats u = topShame.get(i).getValue();
+                sb.append(i + 1).append(". <@").append(userId).append("> — ").append(u.incorrect    ).append("\n");
+            }
+        }
+
+        event.reply(sb.toString()).setEphemeral(true).queue();
     }
 }

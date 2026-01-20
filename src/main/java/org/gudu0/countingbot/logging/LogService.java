@@ -2,64 +2,53 @@ package org.gudu0.countingbot.logging;
 
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
-import org.gudu0.countingbot.config.BotConfig;
+import org.gudu0.countingbot.guild.GuildContext;
+import org.gudu0.countingbot.guild.GuildManager;
 import org.gudu0.countingbot.util.ConsoleLog;
 
-import java.time.format.FormatStyle;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.time.ZoneId;
-import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 
-
 public class LogService {
-    private final BotConfig cfg;
-    private final AtomicBoolean ready = new AtomicBoolean(false);
+
+    public static final ZoneId ZONE = ZoneId.of("America/Los_Angeles");
+    public static final DateTimeFormatter TS = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+    private final GuildManager guilds;
     private volatile JDA jda;
 
-    public static final DateTimeFormatter TS = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM);
-    public static final ZoneId ZONE = ZoneId.of("America/Los_Angeles");
-
-
-    public LogService(BotConfig cfg) {
-        this.cfg = cfg;
+    public LogService(GuildManager guilds) {
+        this.guilds = guilds;
     }
 
     public void attach(JDA jda) {
         this.jda = jda;
-        this.ready.set(true);
     }
 
-    public void log(String message) {
-        // Always print to console:
+    public void logGlobal(String message) {
         ConsoleLog.info("LogService", message);
+    }
 
-        // Discord thread logging is optional:
-        if (!cfg.enableLogs) {
-            ConsoleLog.debug("LogService", "Discord logging disabled (enableLogs=false)");
-            return;
-        }
-        if (cfg.logThreadId == null || cfg.logThreadId.isBlank()) {
-            ConsoleLog.debug("LogService", "Discord logging disabled (logThreadId missing)");
-            return;
-        }
-        if (!ready.get() || jda == null) {
-            ConsoleLog.debug("LogService", "Discord logging skipped (JDA not ready yet)");
-            return;
-        }
+    public void log(long guildId, String message) {
+        // Always console-log
+        ConsoleLog.info("LogService", "guildId=" + guildId + " | " + message);
 
-        MessageChannel ch = jda.getChannelById(MessageChannel.class, cfg.logThreadId);
+        JDA j = this.jda;
+        if (j == null) return;
+
+        GuildContext ctx = guilds.get(guildId);
+        if (!ctx.cfg.enableLogs) return;
+        if (ctx.cfg.logThreadId == null || ctx.cfg.logThreadId.isBlank()) return;
+
+        MessageChannel ch = j.getChannelById(MessageChannel.class, ctx.cfg.logThreadId);
         if (ch == null) {
-            ConsoleLog.warn("LogService", "logThreadId not found: " + cfg.logThreadId);
+            ConsoleLog.warn("LogService", "guildId=" + guildId + " logThreadId not found: " + ctx.cfg.logThreadId);
             return;
         }
 
-        String out = "[" + ZonedDateTime.now(ZONE).format(TS) + "] " + message;
-
-        ch.sendMessage(out).queue(
-                ok -> ConsoleLog.debug("LogService", "Sent discord log"),
-                err -> ConsoleLog.error("LogService", "Log send failed: " + err.getMessage(), err)
+        ch.sendMessage(message).queue(
+                ok -> {},
+                err -> ConsoleLog.error("LogService", "guildId=" + guildId + " failed sending log: " + err.getMessage(), err)
         );
     }
-
 }

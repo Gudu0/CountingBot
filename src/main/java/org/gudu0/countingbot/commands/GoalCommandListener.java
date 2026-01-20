@@ -3,23 +3,36 @@ package org.gudu0.countingbot.commands;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
+import org.gudu0.countingbot.goals.GuildGoalsServiceRegistry;
 import org.gudu0.countingbot.goals.GoalsService;
+import org.gudu0.countingbot.guild.GuildManager;
 import org.gudu0.countingbot.util.ConsoleLog;
 
-import java.time.*;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Objects;
 
+/**
+ * /goal set|clear|view
+ *
+ * Multi-guild: routes to GoalsService for the calling guild (data/guilds/<guildId>/goals.json).
+ */
 public class GoalCommandListener extends ListenerAdapter {
-    private final GoalsService goals;
 
-    public GoalCommandListener(GoalsService goals) {
-        this.goals = goals;
+    private final GuildManager guilds;
+    private final GuildGoalsServiceRegistry goalsRegistry;
+
+    public GoalCommandListener(GuildManager guilds, GuildGoalsServiceRegistry goalsRegistry) {
+        this.guilds = guilds;
+        this.goalsRegistry = goalsRegistry;
     }
 
     @Override
     public void onSlashCommandInteraction(SlashCommandInteractionEvent event) {
         if (!event.getName().equals("goal")) return;
+
         ConsoleLog.info("Command - " + this.getClass().getSimpleName(),
                 "/" + event.getName()
                         + (event.getSubcommandName() != null ? " " + event.getSubcommandName() : "")
@@ -27,6 +40,15 @@ public class GoalCommandListener extends ListenerAdapter {
                         + " name=" + event.getUser().getName()
                         + " guildId=" + (event.getGuild() != null ? event.getGuild().getId() : "DM")
                         + " channelId=" + event.getChannel().getId());
+
+        if (event.getGuild() == null) {
+            event.reply("This command can only be used in a server.").setEphemeral(true).queue();
+            return;
+        }
+
+        long guildId = event.getGuild().getIdLong();
+        // Ensure the context exists (loads data/guilds/<guildId>/config.json etc.)
+        guilds.get(guildId);
 
         String sub = event.getSubcommandName();
         if (sub == null) {
@@ -42,6 +64,8 @@ public class GoalCommandListener extends ListenerAdapter {
             return;
         }
 
+        GoalsService goals = goalsRegistry.getOrCreate(guildId);
+
         switch (sub) {
             case "set" -> {
                 long target = Objects.requireNonNull(event.getOption("target")).getAsLong();
@@ -50,22 +74,24 @@ public class GoalCommandListener extends ListenerAdapter {
                     return;
                 }
 
-
-
-                String deadlineRaw = event.getOption("deadline") != null ? Objects.requireNonNull(event.getOption("deadline")).getAsString() : null;
+                String deadlineRaw = event.getOption("deadline") != null
+                        ? Objects.requireNonNull(event.getOption("deadline")).getAsString()
+                        : null;
                 Long deadlineMs = parseDeadline(deadlineRaw);
 
                 goals.setGoal(target, event.getUser().getIdLong(), deadlineMs);
-                event.reply("Goal set: Reach " + target + (deadlineMs != null ? " (deadline <t:" + (deadlineMs / 1000) + ":R>)" : "") + ".")
+                event.reply("Goal set: Reach " + target
+                                + (deadlineMs != null ? " (deadline <t:" + (deadlineMs / 1000) + ":R>)" : "")
+                                + ".")
                         .setEphemeral(true)
                         .queue();
 
-                ConsoleLog.info("Goal - Set", "target= " + target + "deadline= " + deadlineMs);
+                ConsoleLog.info("Goal - Set", "guildId=" + guildId + " target=" + target + " deadlineMs=" + deadlineMs);
             }
             case "clear" -> {
                 goals.clearGoal();
                 event.reply("Goal cleared.").setEphemeral(true).queue();
-                ConsoleLog.warn("Goal - Clear", "Cleared Goal.");
+                ConsoleLog.warn("Goal - Clear", "guildId=" + guildId + " cleared goal");
             }
             case "view" -> event.replyEmbeds(goals.buildGoalEmbed()).setEphemeral(true).queue();
             default -> event.reply("Unknown subcommand: " + sub).setEphemeral(true).queue();
@@ -75,7 +101,7 @@ public class GoalCommandListener extends ListenerAdapter {
     /**
      * Supported deadline formats (string option):
      * - null/empty/"none" => no deadline
-     * - "in 7d", "in 12h", "in 30m", "in 45s"
+     * - "in 7d", "in 12h", "in 30m", "in 45s", "in 2w"
      * - "YYYY-MM-DD" (assumes 23:59 local time)
      */
     private static Long parseDeadline(String deadline) {
@@ -115,8 +141,7 @@ public class GoalCommandListener extends ListenerAdapter {
         try {
             LocalDate d = LocalDate.parse(deadline, DateTimeFormatter.ISO_LOCAL_DATE);
             LocalDateTime dt = d.atTime(23, 59);
-            @SuppressWarnings("UnnecessaryLocalVariable") long ms = dt.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
-            return ms;
+            return dt.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
         } catch (Exception ignored) {}
 
         return null;
