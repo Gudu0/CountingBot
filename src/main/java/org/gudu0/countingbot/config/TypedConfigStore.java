@@ -29,7 +29,9 @@ public class TypedConfigStore<T> {
         Path tmp = path.resolveSibling(path.getFileName() + ".tmp");
         om.writeValue(tmp.toFile(), cfg);
         Files.move(tmp, path, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
-        ConsoleLog.info("TypedConfigStore", "Saved config to " + path);
+        if (ConsoleLog.DEBUG) {
+            ConsoleLog.debug("TypedConfigStore", "Saved config to " + path);
+        }
     }
 
     private T loadOrNew() {

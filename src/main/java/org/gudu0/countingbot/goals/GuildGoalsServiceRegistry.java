@@ -45,7 +45,9 @@ public final class GuildGoalsServiceRegistry {
     /** Get or create the per-guild GoalsService. */
     public GoalsService getOrCreate(long guildId) {
         return map.computeIfAbsent(guildId, gid -> {
-            ConsoleLog.info("GoalsRegistry", "Creating GoalsService for guildId=" + gid);
+            if (ConsoleLog.DEBUG) {
+                ConsoleLog.debug("GoalsRegistry", "Creating GoalsService for guildId=" + gid);
+            }
             GuildContext ctx = guilds.get(gid);
             GoalsService gs = new GoalsService(ctx.cfg, ctx.goalsStore, ctx.stateStore);
 

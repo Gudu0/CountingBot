@@ -27,7 +27,7 @@ import java.util.stream.Stream;
 
 public class CountingListener extends ListenerAdapter {
 
-    private static final int RESYNC_HISTORY = 10;
+    private static final int RESYNC_HISTORY = 3;
 
     private final GuildManager guilds;
     private final StatsStore stats;
@@ -74,7 +74,11 @@ public class CountingListener extends ListenerAdapter {
 
             resyncNow(event.getJDA(), guildId, r -> {
                 if (r.found()) {
-                    ConsoleLog.info("Resync", "guildId=" + guildId + " init: last=" + r.number() + " user=" + r.userId());
+
+                    if (ConsoleLog.DEBUG) {
+                        ConsoleLog.debug("Resync", "guildId=" + guildId + " init: last=" + r.number() + " user=" + r.userId());
+                    }
+
                 } else {
                     ConsoleLog.warn("Resync", "guildId=" + guildId + " init: no valid count found");
                 }
@@ -199,7 +203,9 @@ public class CountingListener extends ListenerAdapter {
 
         resyncNow(event.getJDA(), guildId, r -> {
             if (r.found()) {
-                ConsoleLog.info("Resync", "guildId=" + guildId + " post-delete: last=" + r.number() + " user=" + r.userId());
+                if (ConsoleLog.DEBUG) {
+                    ConsoleLog.debug("Resync", "guildId=" + guildId + " post-delete: last=" + r.number() + " user=" + r.userId());
+                }
             } else {
                 ConsoleLog.warn("Resync", "guildId=" + guildId + " post-delete: no valid count found");
             }
@@ -275,11 +281,13 @@ public class CountingListener extends ListenerAdapter {
     }
 
     private void logDecision(long guildId, String reason, Message msg) {
-        ConsoleLog.info("Counting",
-                "guildId=" + guildId + " " + reason
-                        + " | author=" + msg.getAuthor().getId()
-                        + " name=" + msg.getAuthor().getName()
-                        + " content=\"" + msg.getContentRaw() + "\"");
+        if (ConsoleLog.DEBUG) {
+            ConsoleLog.debug("Counting",
+                    "guildId=" + guildId + " " + reason
+                            + " | author=" + msg.getAuthor().getId()
+                            + " name=" + msg.getAuthor().getName()
+                            + " content=\"" + msg.getContentRaw() + "\"");
+        }
     }
 
     /**
@@ -292,7 +300,7 @@ public class CountingListener extends ListenerAdapter {
         String s = msg.getContentRaw(); // DO NOT trim; whitespace is invalid
         if (s == null || s.isEmpty()) return null;
 
-        if (!s.matches("\\d+")) return null;
+        if (!isDigitsOnly(s)) return null;
         if (s.length() > 1 && s.startsWith("0")) return null;
 
         try {
@@ -302,6 +310,16 @@ public class CountingListener extends ListenerAdapter {
             return null;
         }
     }
+
+    private static boolean isDigitsOnly(String s) {
+        if (s.isEmpty()) return false;
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (c < '0' || c > '9') return false;
+        }
+        return true;
+    }
+
 
     // ----------------------------
     // Resync (guild-specific)
@@ -332,7 +350,9 @@ public class CountingListener extends ListenerAdapter {
             return;
         }
 
-        ConsoleLog.info("Resync", "guildId=" + guildId + " Starting resync (retrievePast=" + RESYNC_HISTORY + ") channelId=" + channelIdStr);
+        if (ConsoleLog.DEBUG) {
+            ConsoleLog.debug("Resync", "guildId=" + guildId + " Starting resync (retrievePast=" + RESYNC_HISTORY + ") channelId=" + channelIdStr);
+        }
 
         ch.getHistory().retrievePast(RESYNC_HISTORY).queue(history -> {
             Parsed found = null;
@@ -343,7 +363,9 @@ public class CountingListener extends ListenerAdapter {
                 if (p != null) {
                     found = p;
                     foundMsg = m;
-                    ConsoleLog.info("Resync", "guildId=" + guildId + " Found last valid: n=" + found.number + " userId=" + found.authorId + " msgId=" + foundMsg.getId());
+                    if (ConsoleLog.DEBUG) {
+                        ConsoleLog.debug("Resync", "guildId=" + guildId + " Found last valid: n=" + found.number + " userId=" + found.authorId + " msgId=" + foundMsg.getId());
+                    }
                     break;
                 }
             }

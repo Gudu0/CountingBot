@@ -30,7 +30,10 @@ public class JsonStore<T> {
 
         this.om = new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT);
         this.value = loadOrNew();
-        ConsoleLog.info("JsonStore", "Loaded " + nameForLogs + " from " + path.toString());
+
+        if (ConsoleLog.DEBUG) {
+            ConsoleLog.debug("JsonStore", "Loaded " + nameForLogs + " from " + path.toString());
+        }
     }
 
     public T get() {
@@ -63,7 +66,9 @@ public class JsonStore<T> {
         synchronized (lock) {
             if (!dirty) return;
 
-            ConsoleLog.debug("JsonStore", "Flushing " + nameForLogs + " -> " + path);
+            if (ConsoleLog.DEBUG) {
+                ConsoleLog.debug("JsonStore", "Flushing " + nameForLogs + " -> " + path);
+            }
 
             Files.createDirectories(path.getParent());
             Path tmp = path.resolveSibling(path.getFileName() + ".tmp");
@@ -73,7 +78,9 @@ public class JsonStore<T> {
 
             dirty = false;
 
-            ConsoleLog.debug("JsonStore", "Flushed " + nameForLogs);
+            if (ConsoleLog.DEBUG) {
+                ConsoleLog.debug("JsonStore", "Flushed " + nameForLogs);
+            }
         }
     }
 

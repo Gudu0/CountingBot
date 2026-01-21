@@ -137,7 +137,9 @@ public class GoalsService {
                     gs.lastRenderedNumber = lastNumber;
                     goalsStore.markDirty();
                     dirty.set(false);
-                    ConsoleLog.debug("Goals", "Edited goal message id=" + msg.getId() + " lastNumber=" + lastNumber);
+                    if (ConsoleLog.DEBUG) {
+                        ConsoleLog.debug("Goals", "Edited goal message id=" + msg.getId() + " lastNumber=" + lastNumber);
+                    }
                 },
                 err -> ConsoleLog.error("Goals","Failed to edit goals message.")
         );

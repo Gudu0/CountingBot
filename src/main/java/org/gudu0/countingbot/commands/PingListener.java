@@ -8,13 +8,17 @@ public class PingListener extends ListenerAdapter {
     @Override
     public void onSlashCommandInteraction(SlashCommandInteractionEvent event) {
         if (!event.getName().equals("ping")) return;
-        ConsoleLog.info("Command - " + this.getClass().getSimpleName(),
-                "/" + event.getName()
-                        + (event.getSubcommandName() != null ? " " + event.getSubcommandName() : "")
-                        + " by userId=" + event.getUser().getId()
-                        + " name=" + event.getUser().getName()
-                        + " guildId=" + (event.getGuild() != null ? event.getGuild().getId() : "DM")
-                        + " channelId=" + event.getChannel().getId());
+        ConsoleLog.info("Command", "Ping Command Used");
+
+        if (ConsoleLog.DEBUG) {
+            ConsoleLog.debug("Command - " + this.getClass().getSimpleName(),
+                    "/" + event.getName()
+                            + (event.getSubcommandName() != null ? " " + event.getSubcommandName() : "")
+                            + " by userId=" + event.getUser().getId()
+                            + " name=" + event.getUser().getName()
+                            + " guildId=" + (event.getGuild() != null ? event.getGuild().getId() : "DM")
+                            + " channelId=" + event.getChannel().getId());
+        }
 
         event.reply("Pong!").setEphemeral(true).queue();
     }

@@ -35,7 +35,9 @@ public final class GuildContext {
         this.guildId = guildId;
 
         Path dir = BotPaths.guildDir(guildId);
-        ConsoleLog.info("GuildContext", "Initializing guild context dir=" + dir);
+        if (ConsoleLog.DEBUG) {
+            ConsoleLog.debug("GuildContext", "Initializing guild context dir=" + dir);
+        }
 
         // Load per-guild config
         Path cfgPath = dir.resolve("config.json");

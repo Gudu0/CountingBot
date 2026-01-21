@@ -18,13 +18,15 @@ public class SuggestCommandListener extends ListenerAdapter {
     @Override
     public void onSlashCommandInteraction(SlashCommandInteractionEvent event) {
         if (!event.getName().equals("suggest")) return;
-        ConsoleLog.info("Command - " + this.getClass().getSimpleName(),
-                "/" + event.getName()
-                        + (event.getSubcommandName() != null ? " " + event.getSubcommandName() : "")
-                        + " by userId=" + event.getUser().getId()
-                        + " name=" + event.getUser().getName()
-                        + " guildId=" + (event.getGuild() != null ? event.getGuild().getId() : "DM")
-                        + " channelId=" + event.getChannel().getId());
+        if (ConsoleLog.DEBUG) {
+            ConsoleLog.debug("Command - " + this.getClass().getSimpleName(),
+                    "/" + event.getName()
+                            + (event.getSubcommandName() != null ? " " + event.getSubcommandName() : "")
+                            + " by userId=" + event.getUser().getId()
+                            + " name=" + event.getUser().getName()
+                            + " guildId=" + (event.getGuild() != null ? event.getGuild().getId() : "DM")
+                            + " channelId=" + event.getChannel().getId());
+        }
 
         String text = Objects.requireNonNull(event.getOption("text")).getAsString().trim();
         if (text.isEmpty()) {

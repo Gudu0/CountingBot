@@ -53,7 +53,11 @@ public class CountDelayListener extends ListenerAdapter {
 
         try {
             ctx.configStore.save();
-            ConsoleLog.info("CountDelay", "guildId=" + guildId + " set delay=" + seconds);
+
+            if (ConsoleLog.DEBUG) {
+                ConsoleLog.debug("CountDelay", "guildId=" + guildId + " set delay=" + seconds);
+            }
+
             event.reply("Count delay set to **" + seconds + "s** for this server.").setEphemeral(true).queue();
         } catch (Exception e) {
             ConsoleLog.error("CountDelay", "guildId=" + guildId + " failed saving config: " + e.getMessage(), e);

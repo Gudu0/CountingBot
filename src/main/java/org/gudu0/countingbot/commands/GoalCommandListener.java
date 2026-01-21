@@ -33,13 +33,16 @@ public class GoalCommandListener extends ListenerAdapter {
     public void onSlashCommandInteraction(SlashCommandInteractionEvent event) {
         if (!event.getName().equals("goal")) return;
 
-        ConsoleLog.info("Command - " + this.getClass().getSimpleName(),
-                "/" + event.getName()
-                        + (event.getSubcommandName() != null ? " " + event.getSubcommandName() : "")
-                        + " by userId=" + event.getUser().getId()
-                        + " name=" + event.getUser().getName()
-                        + " guildId=" + (event.getGuild() != null ? event.getGuild().getId() : "DM")
-                        + " channelId=" + event.getChannel().getId());
+        ConsoleLog.info("Command", "Goal Command Used");
+        if (ConsoleLog.DEBUG) {
+            ConsoleLog.debug("Command - " + this.getClass().getSimpleName(),
+                    "/" + event.getName()
+                            + (event.getSubcommandName() != null ? " " + event.getSubcommandName() : "")
+                            + " by userId=" + event.getUser().getId()
+                            + " name=" + event.getUser().getName()
+                            + " guildId=" + (event.getGuild() != null ? event.getGuild().getId() : "DM")
+                            + " channelId=" + event.getChannel().getId());
+        }
 
         if (event.getGuild() == null) {
             event.reply("This command can only be used in a server.").setEphemeral(true).queue();
@@ -86,7 +89,9 @@ public class GoalCommandListener extends ListenerAdapter {
                         .setEphemeral(true)
                         .queue();
 
-                ConsoleLog.info("Goal - Set", "guildId=" + guildId + " target=" + target + " deadlineMs=" + deadlineMs);
+                if (ConsoleLog.DEBUG) {
+                    ConsoleLog.debug("Goal - Set", "guildId=" + guildId + " target=" + target + " deadlineMs=" + deadlineMs);
+                }
             }
             case "clear" -> {
                 goals.clearGoal();

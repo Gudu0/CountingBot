@@ -20,7 +20,9 @@ public final class GuildManager {
     public GuildContext get(long guildId) {
         GuildContext existing = contexts.get(guildId);
         if (existing != null) {
-            ConsoleLog.debug("GuildManager", "Cache hit guildId=" + guildId);
+            if (ConsoleLog.DEBUG) {
+                ConsoleLog.debug("GuildManager", "Cache hit guildId=" + guildId);
+            }
             return existing;
         }
 
@@ -33,7 +35,9 @@ public final class GuildManager {
             return raced;
         }
 
-        ConsoleLog.info("GuildManager", "Context ready guildId=" + guildId);
+        if (ConsoleLog.DEBUG) {
+            ConsoleLog.debug("GuildManager", "Context ready guildId=" + guildId);
+        }
         return created;
     }
 

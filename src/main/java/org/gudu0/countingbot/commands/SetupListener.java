@@ -188,12 +188,15 @@ public class SetupListener extends ListenerAdapter {
     }
 
     private static void logCommand(SlashCommandInteractionEvent event) {
-        ConsoleLog.info("Command - SetupListener",
-                "/setup"
-                        + (event.getSubcommandName() != null ? " " + event.getSubcommandName() : "")
-                        + " by userId=" + event.getUser().getId()
-                        + " name=" + event.getUser().getName()
-                        + " guildId=" + (event.getGuild() != null ? event.getGuild().getId() : "DM")
-                        + " channelId=" + event.getChannel().getId());
+        ConsoleLog.info("Command", "Setup Command Used");
+        if (ConsoleLog.DEBUG) {
+            ConsoleLog.debug("Command - SetupListener",
+                    "/setup"
+                            + (event.getSubcommandName() != null ? " " + event.getSubcommandName() : "")
+                            + " by userId=" + event.getUser().getId()
+                            + " name=" + event.getUser().getName()
+                            + " guildId=" + (event.getGuild() != null ? event.getGuild().getId() : "DM")
+                            + " channelId=" + event.getChannel().getId());
+        }
     }
 }

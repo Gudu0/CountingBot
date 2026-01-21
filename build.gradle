@@ -31,3 +31,10 @@ java {
 application {
     mainClass = 'org.gudu0.countingbot.Main'
 }
+
+//tasks.named("run", JavaExec) {
+//    jvmArgs(
+//            "-XX:StartFlightRecording=filename=C:/Temp/bot2.jfr,duration=300s,settings=profile,dumponexit=true",
+//            "-Xlog:jfr=info"
+//    )
+//}

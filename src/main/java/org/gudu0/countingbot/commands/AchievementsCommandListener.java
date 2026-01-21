@@ -22,14 +22,17 @@ public class AchievementsCommandListener extends ListenerAdapter {
     @Override
     public void onSlashCommandInteraction(SlashCommandInteractionEvent event) {
         if (!event.getName().equals("achievements")) return;
+        ConsoleLog.info("Command", "Achievements Command Used");
 
-        ConsoleLog.info("Command - " + this.getClass().getSimpleName(),
-                "/" + event.getName()
-                        + (event.getSubcommandName() != null ? " " + event.getSubcommandName() : "")
-                        + " by userId=" + event.getUser().getId()
-                        + " name=" + event.getUser().getName()
-                        + " guildId=" + (event.getGuild() != null ? event.getGuild().getId() : "DM")
-                        + " channelId=" + event.getChannel().getId());
+        if (ConsoleLog.DEBUG) {
+            ConsoleLog.debug("Command - " + this.getClass().getSimpleName(),
+                    "/" + event.getName()
+                            + (event.getSubcommandName() != null ? " " + event.getSubcommandName() : "")
+                            + " by userId=" + event.getUser().getId()
+                            + " name=" + event.getUser().getName()
+                            + " guildId=" + (event.getGuild() != null ? event.getGuild().getId() : "DM")
+                            + " channelId=" + event.getChannel().getId());
+        }
 
 
         long userId = event.getOption("user") != null

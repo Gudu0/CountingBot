@@ -49,7 +49,7 @@ public final class SafetyChecks {
         }
 
         // Print a human-friendly status line (matches your logs style)
-        System.out.println("[SAFETY] Guild OK: " + guild.getName()
+        ConsoleLog.info("SAFTEY","Guild OK: " + guild.getName()
                 + " | Channel OK: #" + channel.getName()
                 + " | enforceDelete=" + ctx.enforceDeleteRuntime.get()
                 + " | delay=" + ctx.cfg.countingDelaySeconds + "s");
@@ -71,9 +71,11 @@ public final class SafetyChecks {
 
         ctx.enforceDeleteRuntime.set(runtime);
 
-        ConsoleLog.info("Safety", "guildId=" + ctx.guildId
-                + " cfg.enforceDelete=" + ctx.cfg.enforceDelete
-                + " -> enforceDeleteRuntime=" + ctx.enforceDeleteRuntime.get());
+        if (ConsoleLog.DEBUG) {
+            ConsoleLog.debug("Safety", "guildId=" + ctx.guildId
+                    + " cfg.enforceDelete=" + ctx.cfg.enforceDelete
+                    + " -> enforceDeleteRuntime=" + ctx.enforceDeleteRuntime.get());
+        }
 
     }
 }

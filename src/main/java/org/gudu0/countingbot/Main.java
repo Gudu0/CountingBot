@@ -10,18 +10,13 @@ import net.dv8tion.jda.api.requests.GatewayIntent;
 import org.gudu0.countingbot.achievements.AchievementsService;
 import org.gudu0.countingbot.achievements.AchievementsStore;
 import org.gudu0.countingbot.commands.*;
-import org.gudu0.countingbot.config.BotConfig;
-import org.gudu0.countingbot.config.ConfigMigration;
-import org.gudu0.countingbot.config.ConfigStore;
 import org.gudu0.countingbot.config.GlobalConfig;
 import org.gudu0.countingbot.config.TypedConfigStore;
-import org.gudu0.countingbot.console.ConsoleCommandService;
 import org.gudu0.countingbot.counting.CountingListener;
 import org.gudu0.countingbot.disconnects.DisconnectDailyReporter;
 import org.gudu0.countingbot.disconnects.DisconnectStore;
 import org.gudu0.countingbot.goals.GuildGoalsServiceRegistry;
 import org.gudu0.countingbot.guild.GuildContext;
-import org.gudu0.countingbot.guild.GuildDataMigration;
 import org.gudu0.countingbot.guild.GuildJoinListener;
 import org.gudu0.countingbot.guild.GuildManager;
 import org.gudu0.countingbot.logging.LogService;
@@ -44,16 +39,20 @@ public class Main {
         String token = reqEnv("DISCORD_TOKEN");
 
         // 2) Optional: legacy migration (safe, runs only if legacy files exist and parse)
-        tryLegacyBootstrap();
+//        tryLegacyBootstrap();
 
         // 3) Load global config (data/global/config.json)
         GlobalConfig globalCfg = loadOrCreateGlobalConfig();
 
-        ConsoleLog.info("Main", "GlobalConfig: disconnectThreadId=" + safe(globalCfg.disconnectThreadId)
-                + " suggestionsNotifyUserId=" + safe(globalCfg.suggestionsNotifyUserId));
+        if (ConsoleLog.DEBUG) {
+            ConsoleLog.debug("Main", "GlobalConfig: disconnectThreadId=" + safe(globalCfg.disconnectThreadId)
+                    + " suggestionsNotifyUserId=" + safe(globalCfg.suggestionsNotifyUserId));
+        }
 
         // 4) Global stores live in data/global/
-        ConsoleLog.info("Main", "Initializing GLOBAL stores (data/global/*) ...");
+        if (ConsoleLog.DEBUG) {
+            ConsoleLog.debug("Main", "Initializing GLOBAL stores (data/global/*) ...");
+        }
 
         StatsStore statsStore = new StatsStore(BotPaths.GLOBAL_DIR.resolve("stats.json"));
         statsStore.startAutoFlush(10);
@@ -107,84 +106,34 @@ public class Main {
 
         jda.awaitReady();
         ConsoleLog.info("Main", "JDA ready as " + jda.getSelfUser().getName());
-        ConsoleCommandService console = new ConsoleCommandService(guilds, jda);
-        console.start();
 
         // 8) Attach services that need JDA
-        ConsoleLog.info("Main", "Attaching services");
+        if (ConsoleLog.DEBUG) {
+            ConsoleLog.debug("Main", "Attaching services");
+        }
         logs.attach(jda);
         goalsRegistry.attach(jda);
         suggestionsService.attach(jda);
 
         // 9) Safety checks (PER GUILD; will disable enforceDelete per guild if perms missing)
-        ConsoleLog.info("Main", "Running safety checks (per guild)");
+        if (ConsoleLog.DEBUG) {
+            ConsoleLog.debug("Main", "Running safety checks (per guild)");
+        }
         for (Guild g : jda.getGuilds()) {
             GuildContext ctx = guilds.get(g.getIdLong());
             SafetyChecks.runForGuild(jda, ctx);
         }
 
         // 10) Register commands (guild-scoped, for every guild)
-        ConsoleLog.info("Main", "Registering guild commands (all guilds)");
+        if (ConsoleLog.DEBUG) {
+            ConsoleLog.debug("Main", "Registering guild commands (all guilds)");
+        }
         registerGuildCommandsAll(jda);
 
         ConsoleLog.info("Main", "Startup complete");
         logs.logGlobal("Bot Startup Completed Successfully.");
     }
 
-    // ----------------------------
-    // Legacy bootstrap (optional)
-    // ----------------------------
-
-    private static void tryLegacyBootstrap() {
-        try {
-            Path legacyCfgPath = Path.of("data/config.json");
-            if (!Files.exists(legacyCfgPath)) {
-                ConsoleLog.info("Main", "Legacy config not found (data/config.json). Skipping legacy migration.");
-                return;
-            }
-
-            ConfigStore legacyStore = new ConfigStore(legacyCfgPath);
-            BotConfig legacy = legacyStore.cfg();
-
-            long legacyGuildId;
-            try {
-                legacyGuildId = Long.parseLong(legacy.guildId);
-            } catch (Exception e) {
-                ConsoleLog.warn("Main", "Legacy config exists but guildId is not a number. Skipping migration. guildId=" + safe(legacy.guildId));
-                return;
-            }
-
-            ConsoleLog.info("Main", "Legacy config detected; running one-time migrations if needed.");
-            ConfigMigration.migrateFromLegacyIfNeeded(legacy);
-            GuildDataMigration.migrateLegacyGuildFilesIfNeeded(legacyGuildId);
-
-            migrateLegacyGlobalFileIfNeeded("stats.json");
-            migrateLegacyGlobalFileIfNeeded("achievements.json");
-            migrateLegacyGlobalFileIfNeeded("suggestions.json");
-            migrateLegacyGlobalFileIfNeeded("disconnects.json");
-
-        } catch (Exception e) {
-            ConsoleLog.error("Main", "Legacy bootstrap failed: " + e.getMessage(), e);
-        }
-    }
-
-    private static void migrateLegacyGlobalFileIfNeeded(String name) {
-        try {
-            Path src = Path.of("data").resolve(name);
-            Path dst = BotPaths.GLOBAL_DIR.resolve(name);
-
-            if (!Files.exists(src)) return;
-            if (Files.exists(dst)) {
-                ConsoleLog.info("GlobalDataMigration", "Global " + name + " already exists (kept): " + dst);
-                return;
-            }
-
-            Files.copy(src, dst);
-            ConsoleLog.warn("GlobalDataMigration", "Migrated legacy " + name + " -> " + dst + " (source=" + src + ")");
-        } catch (Exception e) {
-            ConsoleLog.error("GlobalDataMigration", "Failed migrating " + name + ": " + e.getMessage(), e);
-        }
-    }
 
     private static GlobalConfig loadOrCreateGlobalConfig() {
         try {
@@ -215,11 +164,6 @@ public class Main {
             registerGuildCommandsOne(g);
         }
     }
-
-    // ----------------------------
-    // Utils
-    // ----------------------------
-
     private static void registerGuildCommandsOne(Guild g) {
         g.updateCommands()
                 .addCommands(
@@ -270,9 +214,19 @@ public class Main {
                                 )
                 )
                 .queue(
-                        ok -> ConsoleLog.info("Main", "Guild commands updated: " + g.getName() + " (" + g.getId() + ")"),
+                        ok -> registerDebugOkMessage(g),
                         err -> ConsoleLog.error("Main", "Failed registering commands in guildId=" + g.getId() + ": " + err.getMessage(), err)
                 );
+    }
+
+    // ----------------------------
+    // Utils
+    // ----------------------------
+
+    private static void registerDebugOkMessage(Guild g){
+        if (ConsoleLog.DEBUG) {
+            ConsoleLog.debug("Main", "Guild commands updated: " + g.getName() + " (" + g.getId() + ")");
+        }
     }
 
     private static String reqEnv(String key) {
