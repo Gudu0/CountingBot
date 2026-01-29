@@ -107,7 +107,7 @@ public class CountingListener extends ListenerAdapter {
             // Not a strict number -> invalid (delete if enforced)
             logDecision(guildId, "INVALID (not strict integer)", msg);
             markIncorrect(ctx, guildId, msg);
-            if (ctx.enforceDeleteRuntime.get()) delete(guildId, msg);
+            if (ctx.cfg.enforceDelete) delete(ctx, guildId, msg);
             return;
         }
 
@@ -141,7 +141,7 @@ public class CountingListener extends ListenerAdapter {
             }
 
             markIncorrect(ctx, guildId, msg);
-            if (ctx.enforceDeleteRuntime.get()) delete(guildId, msg);
+            if (ctx.cfg.enforceDelete) delete(ctx, guildId, msg);
             return;
         }
 
@@ -149,7 +149,7 @@ public class CountingListener extends ListenerAdapter {
         if (parsed.authorId == lastUserId) {
             logDecision(guildId, "INVALID (same user twice)", msg);
             markIncorrect(ctx, guildId, msg);
-            if (ctx.enforceDeleteRuntime.get()) delete(guildId, msg);
+            if (ctx.cfg.enforceDelete) delete(ctx, guildId, msg);
             return;
         }
 
@@ -161,7 +161,7 @@ public class CountingListener extends ListenerAdapter {
                 logDecision(guildId, "INVALID (cooldown " + ctx.cfg.countingDelaySeconds + "s)", msg);
 
                 // Not shaming cooldown violations (by design)
-                if (ctx.enforceDeleteRuntime.get()) delete(guildId, msg);
+                if (ctx.cfg.enforceDelete) delete(ctx, guildId, msg);
                 return;
             }
         }
@@ -272,13 +272,34 @@ public class CountingListener extends ListenerAdapter {
         goalsRegistry.markDirtyIfExists(guildId);
     }
 
-    private void delete(long guildId, Message msg) {
+    private void delete(GuildContext ctx, long guildId, Message msg) {
         msg.delete().queue(
                 ok -> { },
-                err -> ConsoleLog.error("Counting", "guildId=" + guildId + " delete failed: " + err.getMessage(), err)
+                err -> {
+                    ConsoleLog.error("Counting", "guildId=" + guildId + " delete failed: " + err.getMessage(), err);
+
+                    // If deletion is enabled but now failing, permanently disable it.
+                    synchronized (ctx) {
+                        if (ctx.cfg.enforceDelete) {
+                            ctx.cfg.enforceDelete = false;
+                            try {
+                                ctx.configStore.save();
+                                ConsoleLog.warn("Counting",
+                                        "Auto-disabled enforceDelete for guildId=" + guildId +
+                                                " due to delete failure: " + err.getMessage());
+                            } catch (Exception e) {
+                                ConsoleLog.error("Counting",
+                                        "Failed to save config after auto-disabling enforceDelete guildId=" + guildId +
+                                                ": " + e.getMessage(), e);
+                            }
+                        }
+                    }
+                }
         );
+
         logs.log(guildId, "Deleted invalid count by " + msg.getAuthor().getName() + ": " + msg.getContentRaw());
     }
+
 
     private void logDecision(long guildId, String reason, Message msg) {
         if (ConsoleLog.DEBUG) {

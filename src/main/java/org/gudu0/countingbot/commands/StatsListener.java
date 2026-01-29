@@ -36,15 +36,23 @@ public class StatsListener extends ListenerAdapter {
 
         long id = target.getIdLong();
 
+        long correct, incorrect, curStreak, bestStreak;
         // Read stats without creating a new entry
-        UserStats s = stats.data().getOrDefault(id);
+        synchronized (stats.lock) {
+            UserStats s = stats.data().users.get(id);
+            if (s == null) s = new UserStats(); // or your helper default
+            correct = s.correct;
+            incorrect = s.incorrect;
+            curStreak = s.currentStreak;
+            bestStreak = s.bestStreak;
+        }
 
         String msg =
                 "**Stats for " + target.getName() + "**\n" +
-                        "Fame (correct): **" + s.correct + "**\n" +
-                        "Shame (incorrect): **" + s.incorrect + "**\n" +
-                        "Current streak: **" + s.currentStreak + "**\n" +
-                        "Best streak: **" + s.bestStreak + "**";
+                        "Fame (correct): **" + correct + "**\n" +
+                        "Shame (incorrect): **" + incorrect + "**\n" +
+                        "Current streak: **" + curStreak + "**\n" +
+                        "Best streak: **" + bestStreak + "**";
 
         event.reply(msg).setEphemeral(true).queue();
     }

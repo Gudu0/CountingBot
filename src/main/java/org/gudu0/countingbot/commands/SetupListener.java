@@ -18,7 +18,7 @@ import java.util.Objects;
  * /setup ...
  * <p>
  * Multi-guild setup: edits data/guilds/<guildId>/config.json and immediately
- * re-runs SafetyChecks so enforceDeleteRuntime updates without a restart.
+ * re-runs SafetyChecks so enforceDelete updates without a restart.
  */
 public class SetupListener extends ListenerAdapter {
 
@@ -87,7 +87,8 @@ public class SetupListener extends ListenerAdapter {
                 SafetyChecks.runForGuild(event.getJDA(), ctx);
 
                 event.reply("Counting channel set to <#" + ctx.cfg.countingChannelId + ">.\n"
-                                + "enforceDeleteRuntime=" + ctx.enforceDeleteRuntime.get())
+                                + "enforceDelete=" + ctx.cfg.enforceDelete
+                                + " (auto-disabled if unsafe)")
                         .setEphemeral(true).queue();
             }
 
@@ -108,22 +109,16 @@ public class SetupListener extends ListenerAdapter {
 
             case "setenforcedelete" -> {
                 boolean enabled = Objects.requireNonNull(event.getOption("enabled")).getAsBoolean();
-
                 ctx.cfg.enforceDelete = enabled;
-                // If user turned it off, force runtime off immediately even before safety checks.
-                if (!enabled) {
-                    ctx.enforceDeleteRuntime.set(false);
-                }
-
                 saveGuildConfig(ctx, "setenforcedelete", "enforceDelete=" + ctx.cfg.enforceDelete);
 
-                // Recompute runtime enforcement immediately based on perms
+                // If they tried enabling, SafetyChecks may flip it back off and persist it.
                 SafetyChecks.runForGuild(event.getJDA(), ctx);
 
-                event.reply("enforceDelete set to " + ctx.cfg.enforceDelete + ".\n"
-                                + "enforceDeleteRuntime=" + ctx.enforceDeleteRuntime.get()
-                                + " (auto-disabled if perms missing)")
+                event.reply("enforceDelete is now " + ctx.cfg.enforceDelete
+                                + (enabled && !ctx.cfg.enforceDelete ? " (auto-disabled: missing perms or invalid channel)" : ""))
                         .setEphemeral(true).queue();
+
             }
 
             case "setenablelogs" -> {
@@ -180,7 +175,6 @@ public class SetupListener extends ListenerAdapter {
                 + "- countingChannel: " + counting + "\n"
                 + "- delaySeconds: " + ctx.cfg.countingDelaySeconds + "\n"
                 + "- enforceDelete (config): " + ctx.cfg.enforceDelete + "\n"
-                + "- enforceDeleteRuntime: " + ctx.enforceDeleteRuntime.get() + "\n"
                 + "- enableLogs: " + ctx.cfg.enableLogs + "\n"
                 + "- logChannel/thread: " + logCh + "\n"
                 + "\n"

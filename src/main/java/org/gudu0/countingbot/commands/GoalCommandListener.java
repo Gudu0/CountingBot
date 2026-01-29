@@ -1,10 +1,12 @@
 package org.gudu0.countingbot.commands;
 
 import net.dv8tion.jda.api.Permission;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import org.gudu0.countingbot.goals.GuildGoalsServiceRegistry;
 import org.gudu0.countingbot.goals.GoalsService;
+import org.gudu0.countingbot.guild.GuildContext;
 import org.gudu0.countingbot.guild.GuildManager;
 import org.gudu0.countingbot.util.ConsoleLog;
 
@@ -16,10 +18,10 @@ import java.util.Objects;
 
 /**
  * /goal set|clear|view
- *
+ * <p>
  * Multi-guild: routes to GoalsService for the calling guild (data/guilds/<guildId>/goals.json).
  */
-public class GoalCommandListener extends ListenerAdapter {
+public class GoalCommandListener extends ListenerAdapter implements CommandGuards {
 
     private final GuildManager guilds;
     private final GuildGoalsServiceRegistry goalsRegistry;
@@ -31,11 +33,10 @@ public class GoalCommandListener extends ListenerAdapter {
 
     @Override
     public void onSlashCommandInteraction(SlashCommandInteractionEvent event) {
-        if (!event.getName().equals("goal")) return;
+        if (!"goal".equals(event.getName())) return;
 
-        ConsoleLog.info("Command", "Goal Command Used");
         if (ConsoleLog.DEBUG) {
-            ConsoleLog.debug("Command - " + this.getClass().getSimpleName(),
+            ConsoleLog.debug("Command - " + getClass().getSimpleName(),
                     "/" + event.getName()
                             + (event.getSubcommandName() != null ? " " + event.getSubcommandName() : "")
                             + " by userId=" + event.getUser().getId()
@@ -44,29 +45,49 @@ public class GoalCommandListener extends ListenerAdapter {
                             + " channelId=" + event.getChannel().getId());
         }
 
-        if (event.getGuild() == null) {
-            event.reply("This command can only be used in a server.").setEphemeral(true).queue();
-            return;
-        }
+        if (requireGuild(event) == null) return;
 
-        long guildId = event.getGuild().getIdLong();
-        // Ensure the context exists (loads data/guilds/<guildId>/config.json etc.)
-        guilds.get(guildId);
+        long guildId = Objects.requireNonNull(event.getGuild()).getIdLong();
+        GuildContext ctx = guilds.get(guildId);
 
         String sub = event.getSubcommandName();
         if (sub == null) {
-            event.reply("Missing subcommand. Use /goal set|clear|view").setEphemeral(true).queue();
+            event.reply("Missing subcommand. Use /goal set|clear|view")
+                    .setEphemeral(true).queue();
             return;
         }
 
-        boolean isAdmin = event.getMember() != null && event.getMember().hasPermission(Permission.BAN_MEMBERS);
-
-        if ((sub.equals("set") || sub.equals("clear")) && !isAdmin) {
-            event.reply("You don't have permission to do that.").setEphemeral(true).queue();
-            ConsoleLog.warn("Command", "Denied (missing permission) userId=" + event.getUser().getId());
+        // Admin gate (same behavior as your old version: set/clear requires BAN_MEMBERS)
+        if (("set".equals(sub) || "clear".equals(sub)) && !requireMemberPerms(event, Permission.BAN_MEMBERS)) {
+            ConsoleLog.warn("GoalCommand", "Denied (missing admin perm) userId=" + event.getUser().getId());
             return;
         }
 
+        // Counting channel must be configured
+        String chanId = ctx.cfg.countingChannelId;
+        if (chanId == null || chanId.isEmpty()) {
+            event.reply("Your counting channel is not set. Re-set it with `/setup setcountingchannel`.")
+                    .setEphemeral(true).queue();
+            return;
+        }
+
+        TextChannel channel = event.getJDA().getTextChannelById(chanId);
+        if (channel == null) {
+            event.reply("Your counting channel is invalid or missing. Re-set it with `/setup setcountingchannel`.")
+                    .setEphemeral(true).queue();
+            return;
+        }
+
+        // Bot perms in the *counting* channel (not the command channel)
+        if (!requireBotPerms(event, channel,
+                Permission.VIEW_CHANNEL,
+                Permission.MESSAGE_SEND,
+                Permission.MESSAGE_EMBED_LINKS)) {
+            ConsoleLog.warn("GoalCommand", "Bot missing perms in #" + channel.getName() + " guildId=" + guildId);
+            return;
+        }
+
+        // Safe to create/use the goals service now
         GoalsService goals = goalsRegistry.getOrCreate(guildId);
 
         switch (sub) {
@@ -77,17 +98,19 @@ public class GoalCommandListener extends ListenerAdapter {
                     return;
                 }
 
-                String deadlineRaw = event.getOption("deadline") != null
+                String deadlineRaw = (event.getOption("deadline") != null)
                         ? Objects.requireNonNull(event.getOption("deadline")).getAsString()
                         : null;
                 Long deadlineMs = parseDeadline(deadlineRaw);
 
                 goals.setGoal(target, event.getUser().getIdLong(), deadlineMs);
+
                 event.reply("Goal set: Reach " + target
                                 + (deadlineMs != null ? " (deadline <t:" + (deadlineMs / 1000) + ":R>)" : "")
                                 + ".")
                         .setEphemeral(true)
-                        .queue();
+                        .queue(ok -> ConsoleLog.info("GoalCommand", "Set Worked"),
+                                err -> ConsoleLog.error("GoalCommand", "Set Failed"));
 
                 if (ConsoleLog.DEBUG) {
                     ConsoleLog.debug("Goal - Set", "guildId=" + guildId + " target=" + target + " deadlineMs=" + deadlineMs);

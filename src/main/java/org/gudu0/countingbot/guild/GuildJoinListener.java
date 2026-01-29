@@ -12,7 +12,7 @@ import java.util.function.BiConsumer;
 /**
  * Detects when the bot is added to a new server while running.
  * - Creates/loads GuildContext (data/guilds/<id>/...)
- * - Runs safety checks (sets enforceDeleteRuntime properly)
+ * - Runs safety checks (sets enforceDelete properly)
  * - Registers guild commands for that guild
  */
 public class GuildJoinListener extends ListenerAdapter {
@@ -40,7 +40,7 @@ public class GuildJoinListener extends ListenerAdapter {
         // Ensure folder/config/stores exist
         GuildContext ctx = guilds.get(guildId);
 
-        // Re-run safety checks (will disable enforceDeleteRuntime if not configured/perms missing)
+        // Re-run safety checks (will disable enforceDelete if not configured/perms missing)
         SafetyChecks.runForGuild(event.getJDA(), ctx);
 
         // Register slash commands in this new guild

@@ -8,7 +8,6 @@ import org.gudu0.countingbot.util.BotPaths;
 import org.gudu0.countingbot.util.ConsoleLog;
 
 import java.nio.file.Path;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Everything that is "per guild" lives here.
@@ -28,8 +27,6 @@ public final class GuildContext {
     public final StateStore stateStore;
     public final GoalsStore goalsStore;
 
-    // Runtime toggles that SafetyChecks may change per guild (later)
-    public final AtomicBoolean enforceDeleteRuntime;
 
     public GuildContext(long guildId) {
         this.guildId = guildId;
@@ -52,8 +49,6 @@ public final class GuildContext {
         this.stateStore.startAutoFlush(5);
         this.goalsStore.startAutoFlush(10);
 
-        // Runtime toggle mirrors config at startup
-        this.enforceDeleteRuntime = new AtomicBoolean(cfg.enforceDelete);
 
         // Helpful log for sanity
         ConsoleLog.info(

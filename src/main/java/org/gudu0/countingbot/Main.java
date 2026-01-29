@@ -25,66 +25,54 @@ import org.gudu0.countingbot.suggestions.SuggestionsService;
 import org.gudu0.countingbot.suggestions.SuggestionsStore;
 import org.gudu0.countingbot.util.BotPaths;
 import org.gudu0.countingbot.util.ConsoleLog;
+import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.NotNull;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
 
 public class Main {
-
+    public static JDA jda;
     public static void main(String[] args) throws Exception {
         ConsoleLog.info("Main", "Starting Bot");
         BotPaths.ensureBaseDirs();
 
         // 1) Token (env)
         String token = reqEnv("DISCORD_TOKEN");
-
         // 2) Optional: legacy migration (safe, runs only if legacy files exist and parse)
 //        tryLegacyBootstrap();
 
         // 3) Load global config (data/global/config.json)
         GlobalConfig globalCfg = loadOrCreateGlobalConfig();
-
         if (ConsoleLog.DEBUG) {
             ConsoleLog.debug("Main", "GlobalConfig: disconnectThreadId=" + safe(globalCfg.disconnectThreadId)
                     + " suggestionsNotifyUserId=" + safe(globalCfg.suggestionsNotifyUserId));
         }
-
         // 4) Global stores live in data/global/
         if (ConsoleLog.DEBUG) {
             ConsoleLog.debug("Main", "Initializing GLOBAL stores (data/global/*) ...");
         }
-
         StatsStore statsStore = new StatsStore(BotPaths.GLOBAL_DIR.resolve("stats.json"));
         statsStore.startAutoFlush(10);
-
         SuggestionsStore suggestionsStore = new SuggestionsStore(BotPaths.GLOBAL_DIR.resolve("suggestions.json"));
         suggestionsStore.startAutoFlush(10);
-
         AchievementsStore achievementsStore = new AchievementsStore(BotPaths.GLOBAL_DIR.resolve("achievements.json"));
         achievementsStore.startAutoFlush(10);
-
         DisconnectStore disconnectStore = new DisconnectStore(BotPaths.GLOBAL_DIR.resolve("disconnects.json"));
         disconnectStore.startAutoFlush(30);
-
         // 5) Multi-guild router
         GuildManager guilds = new GuildManager();
-
         // 6) Services (guild-aware where needed)
         LogService logs = new LogService(guilds);
-
         GuildGoalsServiceRegistry goalsRegistry = new GuildGoalsServiceRegistry(guilds);
-
         SuggestionsService suggestionsService = new SuggestionsService(globalCfg, suggestionsStore);
-
         AchievementsService achievementsService = new AchievementsService(achievementsStore, guilds, statsStore, logs);
-
         CountingListener countingListener = new CountingListener(guilds, statsStore, logs, goalsRegistry, achievementsService);
-
         DisconnectDailyReporter disconnectReporter = new DisconnectDailyReporter(globalCfg, disconnectStore);
 
         // 7) Build JDA
         ConsoleLog.info("Main", "Building JDA (MESSAGE_CONTENT enabled)");
-        JDA jda = JDABuilder.createDefault(token)
+        jda = JDABuilder.createDefault(token)
                 .enableIntents(GatewayIntent.MESSAGE_CONTENT)
                 .addEventListeners(
                         // Commands (now routed per guild where needed)
@@ -105,6 +93,7 @@ public class Main {
                 .build();
 
         jda.awaitReady();
+
         ConsoleLog.info("Main", "JDA ready as " + jda.getSelfUser().getName());
 
         // 8) Attach services that need JDA
@@ -159,12 +148,13 @@ public class Main {
     // Commands registration
     // ----------------------------
 
-    private static void registerGuildCommandsAll(JDA jda) {
+    private static void registerGuildCommandsAll(@NotNull JDA jda) {
         for (Guild g : jda.getGuilds()) {
+            System.out.println(g.getName());
             registerGuildCommandsOne(g);
         }
     }
-    private static void registerGuildCommandsOne(Guild g) {
+    private static void registerGuildCommandsOne(@NotNull Guild g) {
         g.updateCommands()
                 .addCommands(
                         Commands.slash("ping", "Replies with pong"),
@@ -229,12 +219,15 @@ public class Main {
         }
     }
 
+    @NotNull
     private static String reqEnv(String key) {
         String v = System.getenv(key);
         if (v == null || v.isBlank()) throw new IllegalStateException("Missing environment variable: " + key);
         return v;
     }
 
+    @NotNull
+    @Contract(value = "!null -> param1", pure = true)
     private static String safe(String s) {
         return (s == null ? "" : s);
     }

@@ -50,19 +50,19 @@ public class LeaderboardListener extends ListenerAdapter {
         }
 
         // Global leaderboards (across all guilds)
-        StatsData data;
+        List<Map.Entry<Long, UserStats>> entries;
         synchronized (stats.lock) {
-            data = stats.data();
+            entries = List.copyOf(stats.data().users.entrySet());
         }
 
         // Top 10 fame (global)
-        List<Map.Entry<Long, UserStats>> topFame = data.users.entrySet().stream()
+        List<Map.Entry<Long, UserStats>> topFame = entries.stream()
                 .sorted(Comparator.comparingLong((Map.Entry<Long, UserStats> e) -> e.getValue().correct).reversed())
                 .limit(10)
                 .toList();
 
         // Top 10 shame (global)
-        List<Map.Entry<Long, UserStats>> topShame = data.users.entrySet().stream()
+        List<Map.Entry<Long, UserStats>> topShame = entries.stream()
                 .sorted(Comparator.comparingLong((Map.Entry<Long, UserStats> e) -> e.getValue().incorrect).reversed())
                 .limit(10)
                 .toList();
