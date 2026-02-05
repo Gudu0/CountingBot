@@ -5,7 +5,7 @@ plugins {
 }
 
 group = 'org.gudu0'
-version = '2.0-MULTISERVER'
+version = '2.0-IMPROVEMENTS'
 
 repositories {
     mavenCentral()
@@ -13,13 +13,14 @@ repositories {
 
 dependencies {
     // Discord API
-    implementation 'net.dv8tion:JDA:5.0.0-beta.24'
+    implementation("net.dv8tion:JDA:6.0.0")
 
     // JSON persistence
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.17.2'
 
     // Console logging backend
     runtimeOnly 'org.slf4j:slf4j-simple:2.0.16'
+
 }
 
 java {
@@ -31,10 +32,3 @@ java {
 application {
     mainClass = 'org.gudu0.countingbot.Main'
 }
-
-//tasks.named("run", JavaExec) {
-//    jvmArgs(
-//            "-XX:StartFlightRecording=filename=C:/Temp/bot2.jfr,duration=300s,settings=profile,dumponexit=true",
-//            "-Xlog:jfr=info"
-//    )
-//}

@@ -39,8 +39,6 @@ public class Main {
 
         // 1) Token (env)
         String token = reqEnv("DISCORD_TOKEN");
-        // 2) Optional: legacy migration (safe, runs only if legacy files exist and parse)
-//        tryLegacyBootstrap();
 
         // 3) Load global config (data/global/config.json)
         GlobalConfig globalCfg = loadOrCreateGlobalConfig();

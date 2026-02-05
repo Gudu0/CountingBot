@@ -89,7 +89,6 @@ public class CountingListener extends ListenerAdapter {
     @Override
     public void onMessageReceived(MessageReceivedEvent event) {
         if (!event.isFromGuild()) return;
-        if (event.getAuthor().isBot()) return;
 
         long guildId = event.getGuild().getIdLong();
         GuildContext ctx = guilds.get(guildId);
