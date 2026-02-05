@@ -28,6 +28,8 @@ import java.util.stream.Stream;
 public class CountingListener extends ListenerAdapter {
 
     private static final int RESYNC_HISTORY = 3;
+    private static final long EVE_ID = 1466175543564304596L;
+    private static final long BEACON_ID = 1468028192517259385L;
 
     private final GuildManager guilds;
     private final StatsStore stats;
@@ -132,6 +134,14 @@ public class CountingListener extends ListenerAdapter {
 
         // Wrong number
         if (parsed.number != expected) {
+
+            if (parsed.authorId == EVE_ID || parsed.authorId == BEACON_ID && parsed.authorId != lastUserId) {
+                if (parsed.number == expected - 2) {
+                    accept(ctx, guildId, parsed, msg, "ACCEPT EVE SUBTRACT 1");
+                    return;
+                }
+            }
+
             logDecision(guildId, "INVALID (expected " + expected + ", got " + parsed.number + ")", msg);
 
             // Saboteur hook: someone caused someone else to fail (same as before)
@@ -153,8 +163,8 @@ public class CountingListener extends ListenerAdapter {
         }
 
         // Cooldown (only between VALID counts)
-        long now = System.currentTimeMillis();
         if (lastTime != null) {
+            long now = System.currentTimeMillis();
             long minGapMs = ctx.cfg.countingDelaySeconds * 1000L;
             if (now - lastTime < minGapMs) {
                 logDecision(guildId, "INVALID (cooldown " + ctx.cfg.countingDelaySeconds + "s)", msg);

@@ -115,7 +115,7 @@ public class Main {
         if (ConsoleLog.DEBUG) {
             ConsoleLog.debug("Main", "Registering guild commands (all guilds)");
         }
-        registerGuildCommandsAll(jda);
+//        registerGuildCommandsAll(jda);
 
         ConsoleLog.info("Main", "Startup complete");
         logs.logGlobal("Bot Startup Completed Successfully.");

@@ -5,7 +5,7 @@ plugins {
 }
 
 group = 'org.gudu0'
-version = '2.0-IMPROVEMENTS'
+version = '3.0-BOTDOWNCOUNT'
 
 repositories {
     mavenCentral()
