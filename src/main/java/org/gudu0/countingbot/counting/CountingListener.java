@@ -17,6 +17,7 @@ import org.gudu0.countingbot.stats.StatsStore;
 import org.gudu0.countingbot.stats.UserStats;
 import org.gudu0.countingbot.util.BotPaths;
 import org.gudu0.countingbot.util.ConsoleLog;
+import org.jetbrains.annotations.NotNull;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -50,7 +51,7 @@ public class CountingListener extends ListenerAdapter {
     }
 
     @Override
-    public void onReady(ReadyEvent event) {
+    public void onReady(@NotNull ReadyEvent event) {
         // On boot: resync ONLY guilds that already have data/guilds/<id>/ on disk.
         // (This avoids creating folders for every guild automatically.)
         List<Long> configured = listGuildDirsOnDisk();

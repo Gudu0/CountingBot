@@ -13,7 +13,7 @@ import java.nio.file.Path;
  * Everything that is "per guild" lives here.
  * <p>
  * NOTE: This is intentionally minimal for now.
- * We will wire real services later (CountingService/GoalsService etc).
+ * We will wire real services later (CountingService/GoalsService etc.).
  */
 public final class GuildContext {
 

@@ -3,6 +3,7 @@ package org.gudu0.countingbot.commands;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
+import net.dv8tion.jda.api.interactions.commands.OptionMapping;
 import org.gudu0.countingbot.guild.GuildContext;
 import org.gudu0.countingbot.guild.GuildManager;
 import org.gudu0.countingbot.util.ConsoleLog;
@@ -35,7 +36,7 @@ public class CountDelayListener extends ListenerAdapter {
             return;
         }
 
-        Integer seconds = event.getOption("seconds", opt -> opt.getAsInt());
+        Integer seconds = event.getOption("seconds", OptionMapping::getAsInt);
         if (seconds == null) {
             event.reply("Missing seconds.").setEphemeral(true).queue();
             return;

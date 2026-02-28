@@ -5,7 +5,6 @@ import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import org.gudu0.countingbot.counting.CountingState;
 import org.gudu0.countingbot.guild.GuildContext;
 import org.gudu0.countingbot.guild.GuildManager;
-import org.gudu0.countingbot.stats.StatsData;
 import org.gudu0.countingbot.stats.StatsStore;
 import org.gudu0.countingbot.stats.UserStats;
 

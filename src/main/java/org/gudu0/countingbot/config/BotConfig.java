@@ -5,6 +5,7 @@ package org.gudu0.countingbot.config;
  * <p>
  * Keep DISCORD_TOKEN in an environment variable.
  */
+@SuppressWarnings("unused")
 public class BotConfig {
     /** Guild/server ID that this bot is intended to run in. */
     public String guildId;

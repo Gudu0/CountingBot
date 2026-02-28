@@ -9,6 +9,7 @@ import java.nio.file.*;
 /**
  * Loads and saves {@link BotConfig} (data/config.json) with atomic writes.
  */
+@SuppressWarnings("unused")
 public class ConfigStore {
     private final Path path;
     private final ObjectMapper om;
