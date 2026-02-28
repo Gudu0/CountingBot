@@ -5,7 +5,7 @@ plugins {
 }
 
 group = 'org.gudu0'
-version = '4.0-CONSECUTIVECOUNT'
+version = '5.0-NORMAL+GUDUBYPASS'
 
 repositories {
     mavenCentral()

@@ -102,6 +102,16 @@ public class CountingListener extends ListenerAdapter {
         if (!event.getChannel().getId().equals(countingChannelId)) return;
 
         Message msg = event.getMessage();
+
+        //Gudu Check
+        if (msg.getAuthor().getIdLong() == 733113260496126053L){
+            //Special Check
+            String gudumsg = msg.getContentRaw();
+            if (gudumsg.startsWith("!")){
+                return;
+            }
+        }
+
         Parsed parsed = parseStrictCount(msg);
 
         if (parsed == null) {
@@ -135,13 +145,6 @@ public class CountingListener extends ListenerAdapter {
         // Wrong number
         if (parsed.number != expected) {
 
-            if (/*parsed.authorId == EVE_ID || */parsed.authorId == BEACON_ID/* && parsed.authorId != lastUserId*/) {
-                if (parsed.number == expected - 2) {
-                    accept(ctx, guildId, parsed, msg, "ACCEPT EVE SUBTRACT 1");
-                    return;
-                }
-            }
-
             logDecision(guildId, "INVALID (expected " + expected + ", got " + parsed.number + ")", msg);
 
             // Saboteur hook: someone caused someone else to fail (same as before)
@@ -154,13 +157,13 @@ public class CountingListener extends ListenerAdapter {
             return;
         }
 
-//        // Same user twice
-//        if (parsed.authorId == lastUserId) {
-//            logDecision(guildId, "INVALID (same user twice)", msg);
-//            markIncorrect(ctx, guildId, msg);
-//            if (ctx.cfg.enforceDelete) delete(ctx, guildId, msg);
-//            return;
-//        }
+        // Same user twice
+        if (parsed.authorId == lastUserId) {
+            logDecision(guildId, "INVALID (same user twice)", msg);
+            markIncorrect(ctx, guildId, msg);
+            if (ctx.cfg.enforceDelete) delete(ctx, guildId, msg);
+            return;
+        }
 
         // Cooldown (only between VALID counts)
         if (lastTime != null) {
