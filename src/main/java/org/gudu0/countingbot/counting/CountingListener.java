@@ -310,9 +310,19 @@ public class CountingListener extends ListenerAdapter {
                 }
         );
 
-        logs.log(guildId, "Deleted invalid count by " + msg.getAuthor().getName() + ": " + msg.getContentRaw());
+        logs.log(guildId, "Deleted invalid count by " + msg.getAuthor().getName() + ": " + parseDeleteMessage(msg.getContentRaw()));
     }
 
+
+    private String parseDeleteMessage(String msg) {
+        if (msg == null) return "";
+
+        return msg
+            .replaceAll("https?://\\S+", "<>")
+            .replaceAll("www\\.\\S+", "<>")
+            .replaceAll("\\s{2,}", "<>")
+            .trim();
+    }
 
     private void logDecision(long guildId, String reason, Message msg) {
         if (ConsoleLog.DEBUG) {
