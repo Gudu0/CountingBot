@@ -334,10 +334,11 @@ public class CountingListener extends ListenerAdapter {
         }
     }
 
-    // Matches "0", "123", or comma-grouped numbers like "1,234" / "12,345,678".
-    // First group is 1-3 digits with no leading zero; every subsequent group is exactly 3 digits.
+    // Matches "0", plain digits of any length ("3267"), or comma-grouped numbers
+    // like "1,234" / "12,345,678" (first group 1-3 digits, then exactly 3 digits per comma group).
+    // Commas are optional, not required.
     private static final Pattern STRICT_COUNT_PATTERN =
-            Pattern.compile("0|[1-9]\\d{0,2}(,\\d{3})*");
+            Pattern.compile("0|[1-9]\\d*|[1-9]\\d{0,2}(,\\d{3})+");
 
     /**
      * Strict integer parse (matches your rules):
