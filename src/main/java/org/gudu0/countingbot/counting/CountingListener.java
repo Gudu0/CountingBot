@@ -24,6 +24,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 public class CountingListener extends ListenerAdapter {
@@ -335,8 +336,8 @@ public class CountingListener extends ListenerAdapter {
 
     // Matches "0", "123", or comma-grouped numbers like "1,234" / "12,345,678".
     // First group is 1-3 digits with no leading zero; every subsequent group is exactly 3 digits.
-    private static final java.util.regex.Pattern STRICT_COUNT_PATTERN =
-            java.util.regex.Pattern.compile("0|[1-9]\\d{0,2}(,\\d{3})*");
+    private static final Pattern STRICT_COUNT_PATTERN =
+            Pattern.compile("0|[1-9]\\d{0,2}(,\\d{3})*");
 
     /**
      * Strict integer parse (matches your rules):
