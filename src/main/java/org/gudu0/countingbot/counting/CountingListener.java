@@ -99,7 +99,6 @@ public class CountingListener extends ListenerAdapter {
         // Only active if this guild configured a counting channel
         String countingChannelId = ctx.cfg.countingChannelId;
         if (countingChannelId == null || countingChannelId.isBlank()) return;
-
         if (!event.getChannel().getId().equals(countingChannelId)) return;
 
         Message msg = event.getMessage();
@@ -334,9 +333,14 @@ public class CountingListener extends ListenerAdapter {
         }
     }
 
+    // Matches "0", "123", or comma-grouped numbers like "1,234" / "12,345,678".
+    // First group is 1-3 digits with no leading zero; every subsequent group is exactly 3 digits.
+    private static final java.util.regex.Pattern STRICT_COUNT_PATTERN =
+            java.util.regex.Pattern.compile("0|[1-9]\\d{0,2}(,\\d{3})*");
+
     /**
      * Strict integer parse (matches your rules):
-     * - entire content must be digits ONLY (no spaces, no extra text)
+     * - entire content must be digits ONLY, with optional comma thousands-separators in valid positions
      * - no negatives
      * - no leading zeros unless "0"
      */
@@ -344,24 +348,14 @@ public class CountingListener extends ListenerAdapter {
         String s = msg.getContentRaw(); // DO NOT trim; whitespace is invalid
         if (s == null || s.isEmpty()) return null;
 
-        if (!isDigitsOnly(s)) return null;
-        if (s.length() > 1 && s.startsWith("0")) return null;
+        if (!STRICT_COUNT_PATTERN.matcher(s).matches()) return null;
 
         try {
-            long n = Long.parseLong(s);
+            long n = Long.parseLong(s.replace(",", ""));
             return new Parsed(n, msg.getAuthor().getIdLong());
         } catch (NumberFormatException e) {
             return null;
         }
-    }
-
-    private static boolean isDigitsOnly(String s) {
-        if (s.isEmpty()) return false;
-        for (int i = 0; i < s.length(); i++) {
-            char c = s.charAt(i);
-            if (c < '0' || c > '9') return false;
-        }
-        return true;
     }
 
 
