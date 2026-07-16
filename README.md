@@ -29,7 +29,7 @@ There is **no bot chatter in the counting channel*** — invalid messages are si
 In the configured counting channel:
 
 ### Message Format
-- Must be **digits only**
+- Must be **digits only** (commas allowed in proper places)
 - No spaces, no text
 - No negative numbers
 - No leading zeros 
