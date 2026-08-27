@@ -81,6 +81,7 @@ public class Main {
                         new ResyncListener(countingListener),
                         new GoalCommandListener(guilds, goalsRegistry),
                         new SuggestCommandListener(suggestionsService),
+                        new SuggestResponseListener(suggestionsService),
                         new AchievementsCommandListener(achievementsService),
                         new SetupListener(guilds),
                         new GuildJoinListener(guilds, (j, guild) -> registerGuildCommandsOne(guild)),
@@ -115,7 +116,7 @@ public class Main {
         if (ConsoleLog.DEBUG) {
             ConsoleLog.debug("Main", "Registering guild commands (all guilds)");
         }
-//        registerGuildCommandsAll(jda);
+        registerGuildCommandsAll(jda);
 
         ConsoleLog.info("Main", "Startup complete");
         logs.logGlobal("Bot Startup Completed Successfully.");
@@ -156,17 +157,12 @@ public class Main {
         g.updateCommands()
                 .addCommands(
                         Commands.slash("ping", "Replies with pong"),
-
                         Commands.slash("stats", "Show counting stats (fame/shame)")
                                 .addOption(OptionType.USER, "user", "User to view (defaults to you)", false),
-
                         Commands.slash("leaderboard", "Top fame/shame + (this guild) global streak"),
-
                         Commands.slash("countdelay", "Set counting cooldown delay (seconds)")
                                 .addOption(OptionType.INTEGER, "seconds", "Cooldown between VALID counts", true),
-
                         Commands.slash("resync", "Sync count to the counting channel history (this guild)"),
-
                         Commands.slash("goal", "Manage the counting goal (this guild)")
                                 .addSubcommands(
                                         new SubcommandData("set", "Set a new goal")
@@ -175,31 +171,29 @@ public class Main {
                                         new SubcommandData("clear", "Clear the current goal"),
                                         new SubcommandData("view", "View the current goal")
                                 ),
-
                         Commands.slash("suggest", "Submit a suggestion for the bot!")
                                 .addOption(OptionType.STRING, "text", "Your suggestion", true),
-
                         Commands.slash("achievements", "View achievements")
                                 .addOption(OptionType.USER, "user", "User to view (defaults to you)", false),
                         Commands.slash("setup", "Configure this bot for this server (admin only)")
                                 .addSubcommands(
                                         new SubcommandData("status", "Show current config for this server"),
-
                                         new SubcommandData("setcountingchannel", "Set the counting channel")
                                                 .addOption(OptionType.CHANNEL, "channel", "The #counting channel", true),
-
                                         new SubcommandData("setdelay", "Set the cooldown delay (seconds) between VALID counts")
                                                 .addOption(OptionType.INTEGER, "seconds", "Cooldown seconds (>= 0)", true),
-
                                         new SubcommandData("setenforcedelete", "Enable/disable deleting invalid counts")
                                                 .addOption(OptionType.BOOLEAN, "enabled", "true=delete invalid counts", true),
-
                                         new SubcommandData("setenablelogs", "Enable/disable per-guild logging")
                                                 .addOption(OptionType.BOOLEAN, "enabled", "true=send logs to log thread", true),
-
                                         new SubcommandData("setlogthread", "Set the log channel/thread to send logs to")
                                                 .addOption(OptionType.CHANNEL, "channel", "A thread or text channel", true)
-                                )
+                                ),
+                        Commands.slash("suggestion_response", "respond to a suggestion.")
+                                .addOption(OptionType.INTEGER, "suggestion_number", "the suggestion number to respond to", true)
+                                .addOption(OptionType.STRING, "response", "the response to the suggestion", true)
+                                .addOption(OptionType.STRING, "status", "status of suggestion implementation", false)
+
                 )
                 .queue(
                         ok -> registerDebugOkMessage(g),

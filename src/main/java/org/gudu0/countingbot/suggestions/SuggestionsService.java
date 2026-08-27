@@ -42,6 +42,14 @@ public class SuggestionsService {
 
         return entry;
     }
+    public SuggestionEntry getSuggestion(int suggestionNumber) {
+        synchronized (store.lock) {
+            for (SuggestionEntry e : store.state().suggestions) {
+                if (e.id == suggestionNumber) return e;
+            }
+        }
+        return null;
+    }
 
     private void postToSuggestionsChannel(SuggestionEntry e) {
         JDA j = this.jda;
@@ -78,6 +86,35 @@ public class SuggestionsService {
         );
     }
 
+    public void dmUserForSuggestionResponse(long userId, SuggestionEntry e, String response, String status) {
+        JDA j = this.jda;
+        if (j == null) return;
+
+        if (userId == 0) return;
+        j.retrieveUserById(userId).queue(
+                user -> {
+                    StringBuilder sb = new StringBuilder();
+                    sb.append("Hello, ").append(user.getName()).append("!\n");
+                    sb.append("your suggestion: \n\"").append(e.text).append("\"\n");
+                    sb.append("has been reviewed by the creator, here is what they have to say: \n");
+                    sb.append("\"*").append(response).append("*\"\n");
+                    sb.append("They have marked this suggestion as \"**").append(status).append("**\"\n");
+                    sb.append("\n");
+                    sb.append("Thank you for suggesting! to talk more about your suggestion, please DM Gudu0 (<@733113260496126053>");
+                    sb.append("\nGoodbye.");
+                    String message = sb.toString();
+
+                    user.openPrivateChannel().queue(
+                            pc -> pc.sendMessage(message).queue(
+                                    ok -> {},
+                                    err -> System.err.println("DM send failed (privacy/settings): " + err.getMessage())
+                            ),
+                            err -> System.err.println("Open DM failed: " + err.getMessage())
+                    );
+                },
+                err -> System.err.println("Failed to retrieve user: " + err.getMessage())
+        );
+    }
     private void sendDm(User user, SuggestionEntry e) {
         String msg =
                 "New suggestion #" + e.id + "\n" +

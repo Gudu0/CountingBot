@@ -55,11 +55,7 @@ public interface CommandGuards {
 
     // --- Bot permission guards (channel-specific) ---
 
-    default boolean requireBotPerms(
-            SlashCommandInteractionEvent event,
-            GuildChannel channel,
-            Permission... perms
-    ) {
+    default boolean requireBotPerms(SlashCommandInteractionEvent event, GuildChannel channel, Permission... perms) {
         Guild g = event.getGuild();
         if (g == null) {
             event.reply("This command can only be used in a server.")
@@ -83,5 +79,9 @@ public interface CommandGuards {
         event.reply("I’m missing permissions in <#" + channel.getId() + ">: **" + missingStr + "**")
                 .setEphemeral(true).queue();
         return false;
+    }
+
+    static boolean requireUser(SlashCommandInteractionEvent event, long userId) {
+        return !(event.getUser().getIdLong() == userId);
     }
 }

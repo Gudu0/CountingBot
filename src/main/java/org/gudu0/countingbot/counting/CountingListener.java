@@ -91,6 +91,7 @@ public class CountingListener extends ListenerAdapter {
 
     @Override
     public void onMessageReceived(MessageReceivedEvent event) {
+
         if (!event.isFromGuild()) return;
 
         long guildId = event.getGuild().getIdLong();
@@ -104,15 +105,15 @@ public class CountingListener extends ListenerAdapter {
         Message msg = event.getMessage();
 
         //Gudu Check
-        if (msg.getAuthor().getIdLong() == 733113260496126053L){
+        if (msg.getAuthor().getIdLong() == 733113260496126053L ) {
             //Special Check
             String gudumsg = msg.getContentRaw();
-            if (gudumsg.startsWith("!")){
+            if (gudumsg.startsWith("!")) {
                 return;
             }
         }
 
-        Parsed parsed = parseStrictCount(msg);
+        CountVerifier.Parsed parsed = CountVerifier.parseStrictCount(msg);
 
         if (parsed == null) {
             // Not a strict number -> invalid (delete if enforced)
@@ -133,7 +134,7 @@ public class CountingListener extends ListenerAdapter {
             lastNumber = st.lastNumber;
             lastUserId = st.lastUserId;
             expected = st.lastNumber + 1;
-            lastTime = st.userLastValidCountAt.get(parsed.authorId);
+            lastTime = st.userLastValidCountAt.get(parsed.authorId());
         }
 
         // init start behavior
@@ -143,12 +144,12 @@ public class CountingListener extends ListenerAdapter {
         }
 
         // Wrong number
-        if (parsed.number != expected) {
+        if (parsed.number() != expected) {
 
-            logDecision(guildId, "INVALID (expected " + expected + ", got " + parsed.number + ")", msg);
+            logDecision(guildId, "INVALID (expected " + expected + ", got " + parsed.number() + ")", msg);
 
             // Saboteur hook: someone caused someone else to fail (same as before)
-            if (parsed.number == lastNumber && lastUserId != 0 && parsed.authorId != lastUserId) {
+            if (parsed.number() == lastNumber && lastUserId != 0 && parsed.authorId() != lastUserId) {
                 achievements.unlockById(guildId, lastUserId, "cause_fail");
             }
 
@@ -158,7 +159,7 @@ public class CountingListener extends ListenerAdapter {
         }
 
         // Same user twice
-        if (parsed.authorId == lastUserId) {
+        if (parsed.authorId() == lastUserId) {
             logDecision(guildId, "INVALID (same user twice)", msg);
             markIncorrect(ctx, guildId, msg);
             if (ctx.cfg.enforceDelete) delete(ctx, guildId, msg);
@@ -228,16 +229,16 @@ public class CountingListener extends ListenerAdapter {
     // Core actions
     // ----------------------------
 
-    private void accept(GuildContext ctx, long guildId, Parsed parsed, Message msg, String reason) {
+    private void accept(GuildContext ctx, long guildId, CountVerifier.Parsed parsed, Message msg, String reason) {
         long now = System.currentTimeMillis();
 
         // Update counting state (guild-local)
         synchronized (ctx.stateStore.lock) {
             CountingState st = ctx.stateStore.state();
-            st.lastNumber = parsed.number;
-            st.lastUserId = parsed.authorId;
+            st.lastNumber = parsed.number();
+            st.lastUserId = parsed.authorId();
             st.lastMessageId = msg.getIdLong();
-            st.userLastValidCountAt.put(parsed.authorId, now);
+            st.userLastValidCountAt.put(parsed.authorId(), now);
 
             st.globalStreakCurrent++;
             if (st.globalStreakCurrent > st.globalStreakBest) st.globalStreakBest = st.globalStreakCurrent;
@@ -247,18 +248,18 @@ public class CountingListener extends ListenerAdapter {
 
         // Update global stats (bot-wide)
         synchronized (stats.lock) {
-            UserStats us = stats.data().getOrCreate(parsed.authorId);
+            UserStats us = stats.data().getOrCreate(parsed.authorId());
             us.onCorrect(now);
             us.posCounts++;
             stats.markDirty();
         }
 
-        achievements.onTrigger(AchievementTrigger.VALID_COUNT, guildId, parsed.authorId);
+        achievements.onTrigger(AchievementTrigger.VALID_COUNT, guildId, parsed.authorId());
 
         // Goal winner check (guild-local goal)
         synchronized (ctx.goalsStore.lock) {
-            if (ctx.goalsStore.state().active && parsed.number == ctx.goalsStore.state().target) {
-                achievements.unlockById(guildId, parsed.authorId, "goal_winner");
+            if (ctx.goalsStore.state().active && parsed.number() == ctx.goalsStore.state().target) {
+                achievements.unlockById(guildId, parsed.authorId(), "goal_winner");
             }
         }
 
@@ -266,7 +267,6 @@ public class CountingListener extends ListenerAdapter {
 
         logDecision(guildId, reason, msg);
     }
-
     private void markIncorrect(GuildContext ctx, long guildId, Message msg) {
         long now = System.currentTimeMillis();
 
@@ -283,7 +283,6 @@ public class CountingListener extends ListenerAdapter {
         achievements.onTrigger(AchievementTrigger.INVALID_COUNT, guildId, msg.getAuthor().getIdLong());
         goalsRegistry.markDirtyIfExists(guildId);
     }
-
     private void delete(GuildContext ctx, long guildId, Message msg) {
         msg.delete().queue(
                 ok -> { },
@@ -322,7 +321,6 @@ public class CountingListener extends ListenerAdapter {
             .replaceAll("\\s{2,}", "<>")
             .trim();
     }
-
     private void logDecision(long guildId, String reason, Message msg) {
         if (ConsoleLog.DEBUG) {
             ConsoleLog.debug("Counting",
@@ -332,55 +330,6 @@ public class CountingListener extends ListenerAdapter {
                             + " content=\"" + msg.getContentRaw() + "\"");
         }
     }
-
-    /**
-     * Strict integer parse (matches your rules):
-     * - entire content must be digits ONLY, with optional comma thousands-separators in valid positions
-     * - no negatives
-     * - no leading zeros unless "0"
-     */
-    private Parsed parseStrictCount(Message msg) {
-        String s = msg.getContentRaw(); // DO NOT trim; whitespace is invalid
-        if (s == null || s.isEmpty()) return null;
-
-        int charsSinceComma = 0;
-        boolean sawComma = false;
-        for (int i = s.length() - 1; i >= 0; i--) {
-            char currentCharacter = s.charAt(i);
-            if (currentCharacter >= '0' && currentCharacter <= '9') {
-                charsSinceComma++;
-            } else if (currentCharacter == ',') {
-                sawComma = true;
-                if (charsSinceComma == 3) {
-                    charsSinceComma = 0;
-                } else {
-                    return null;
-                }
-            } else {
-                return null; //anything not a number or comma is invalid.
-            }
-        }
-        // Leftmost group: 1-3 digits if commas were used, any length (>=1) if not.
-        if (charsSinceComma < 1 || (sawComma && charsSinceComma > 3)) {
-            return null;
-        }
-        if (s.charAt(0) == '0' && s.length() > 1) {
-            return null; // no leading zeros unless the whole content is "0"
-        }
-
-        try {
-            long n = Long.parseLong(s.replace(",", ""));
-            return new Parsed(n, msg.getAuthor().getIdLong());
-        } catch (NumberFormatException e) {
-            return null;
-        }
-    }
-
-
-    // ----------------------------
-    // Resync (guild-specific)
-    // ----------------------------
-
     public void resyncNow(JDA jda, long guildId, Consumer<ResyncResult> cb) {
         GuildContext ctx = guilds.get(guildId);
 
@@ -411,16 +360,16 @@ public class CountingListener extends ListenerAdapter {
         }
 
         ch.getHistory().retrievePast(RESYNC_HISTORY).queue(history -> {
-            Parsed found = null;
+            CountVerifier.Parsed found = null;
             Message foundMsg = null;
 
             for (Message m : history) {
-                Parsed p = parseStrictCount(m);
+                CountVerifier.Parsed p = CountVerifier.parseStrictCount(m);
                 if (p != null) {
                     found = p;
                     foundMsg = m;
                     if (ConsoleLog.DEBUG) {
-                        ConsoleLog.debug("Resync", "guildId=" + guildId + " Found last valid: n=" + found.number + " userId=" + found.authorId + " msgId=" + foundMsg.getId());
+                        ConsoleLog.debug("Resync", "guildId=" + guildId + " Found last valid: n=" + found.number() + " userId=" + found.authorId() + " msgId=" + foundMsg.getId());
                     }
                     break;
                 }
@@ -439,15 +388,15 @@ public class CountingListener extends ListenerAdapter {
             }
 
             synchronized (ctx.stateStore.lock) {
-                ctx.stateStore.state().lastNumber = found.number;
-                ctx.stateStore.state().lastUserId = found.authorId;
+                ctx.stateStore.state().lastNumber = found.number();
+                ctx.stateStore.state().lastUserId = found.authorId();
                 ctx.stateStore.state().lastMessageId = foundMsg.getIdLong();
                 ctx.stateStore.markDirty();
             }
 
             goalsRegistry.markDirtyOrCreate(guildId);
 
-            cb.accept(new ResyncResult(true, found.number, found.authorId, foundMsg.getIdLong()));
+            cb.accept(new ResyncResult(true, found.number(), found.authorId(), foundMsg.getIdLong()));
         }, err -> {
             ConsoleLog.error("Resync", "guildId=" + guildId + " History fetch failed: " + err.getMessage(), err);
             cb.accept(new ResyncResult(false, -1, 0, 0));
@@ -478,6 +427,5 @@ public class CountingListener extends ListenerAdapter {
         return out;
     }
 
-    private record Parsed(long number, long authorId) {}
     public record ResyncResult(boolean found, long number, long userId, long messageId) {}
 }
