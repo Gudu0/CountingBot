@@ -38,11 +38,7 @@ public class CountingListener extends ListenerAdapter {
     private final GuildGoalsServiceRegistry goalsRegistry;
     private final AchievementsService achievements;
 
-    public CountingListener(GuildManager guilds,
-                            StatsStore stats,
-                            LogService logs,
-                            GuildGoalsServiceRegistry goalsRegistry,
-                            AchievementsService achievements) {
+    public CountingListener(GuildManager guilds, StatsStore stats, LogService logs, GuildGoalsServiceRegistry goalsRegistry, AchievementsService achievements) {
         this.guilds = guilds;
         this.stats = stats;
         this.logs = logs;
@@ -114,6 +110,8 @@ public class CountingListener extends ListenerAdapter {
         }
 
         CountVerifier.Parsed parsed = CountVerifier.parseStrictCount(msg);
+
+
 
         if (parsed == null) {
             // Not a strict number -> invalid (delete if enforced)

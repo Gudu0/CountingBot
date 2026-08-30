@@ -100,7 +100,7 @@ public class SuggestionsService {
                     sb.append("\"*").append(response).append("*\"\n");
                     sb.append("They have marked this suggestion as \"**").append(status).append("**\"\n");
                     sb.append("\n");
-                    sb.append("Thank you for suggesting! to talk more about your suggestion, please DM Gudu0 (<@733113260496126053>");
+                    sb.append("Thank you for suggesting! to talk more about your suggestion, please DM Gudu0 (<@733113260496126053>)");
                     sb.append("\nGoodbye.");
                     String message = sb.toString();
 
