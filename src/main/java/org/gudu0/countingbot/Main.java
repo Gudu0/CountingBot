@@ -173,8 +173,14 @@ public class Main {
                                 ),
                         Commands.slash("suggest", "Submit a suggestion for the bot!")
                                 .addOption(OptionType.STRING, "text", "Your suggestion", true),
-                        Commands.slash("achievements", "View achievements")
-                                .addOption(OptionType.USER, "user", "User to view (defaults to you)", false),
+                        Commands.slash("achievements", "View or grant achievements")
+                                .addSubcommands(
+                                        new SubcommandData("view", "View achievements")
+                                                .addOption(OptionType.USER, "user", "User to view (defaults to you)", false),
+                                        new SubcommandData("grant", "Manually grant a user an achievement (admin only)")
+                                                .addOption(OptionType.USER, "user", "User to grant the achievement to", true)
+                                                .addOption(OptionType.STRING, "achievement", "Achievement id", true)
+                                ),
                         Commands.slash("setup", "Configure this bot for this server (admin only)")
                                 .addSubcommands(
                                         new SubcommandData("status", "Show current config for this server"),

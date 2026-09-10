@@ -4,6 +4,7 @@ import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import org.gudu0.countingbot.achievements.AchievementDef;
+import org.gudu0.countingbot.achievements.AchievementGrantResult;
 import org.gudu0.countingbot.achievements.AchievementsService;
 import org.gudu0.countingbot.achievements.UserAchievements;
 import org.gudu0.countingbot.util.ConsoleLog;
@@ -12,7 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-public class AchievementsCommandListener extends ListenerAdapter {
+public class AchievementsCommandListener extends ListenerAdapter implements CommandGuards {
     private final AchievementsService achievements;
 
     public AchievementsCommandListener(AchievementsService achievements) {
@@ -34,7 +35,21 @@ public class AchievementsCommandListener extends ListenerAdapter {
                             + " channelId=" + event.getChannel().getId());
         }
 
+        String sub = event.getSubcommandName();
+        if (sub == null) {
+            event.reply("Missing subcommand. Use /achievements view or /achievements grant.")
+                    .setEphemeral(true).queue();
+            return;
+        }
 
+        switch (sub) {
+            case "view" -> handleView(event);
+            case "grant" -> handleGrant(event);
+            default -> event.reply("Unknown subcommand: " + sub).setEphemeral(true).queue();
+        }
+    }
+
+    private void handleView(SlashCommandInteractionEvent event) {
         long userId = event.getOption("user") != null
                 ? Objects.requireNonNull(event.getOption("user")).getAsUser().getIdLong()
                 : event.getUser().getIdLong();
@@ -67,8 +82,39 @@ public class AchievementsCommandListener extends ListenerAdapter {
             eb.addField("Unlocked", body, false);
         }
 
-//        eb.setFooter("Now: " + Instant.now());
-
         event.replyEmbeds(eb.build()).setEphemeral(true).queue();
+    }
+
+    private void handleGrant(SlashCommandInteractionEvent event) {
+        if (requireGuild(event) == null) return;
+        if (!requireAdmin(event)) return;
+
+        long guildId = Objects.requireNonNull(event.getGuild()).getIdLong();
+        long targetUserId = Objects.requireNonNull(event.getOption("user")).getAsUser().getIdLong();
+        String achievementId = Objects.requireNonNull(event.getOption("achievement")).getAsString().trim();
+
+        AchievementDef def = null;
+        for (AchievementDef d : achievements.defs()) {
+            if (d.id.equals(achievementId)) { def = d; break; }
+        }
+        String title = def != null ? def.title : achievementId;
+
+        AchievementGrantResult result = achievements.unlockById(
+                guildId, targetUserId, achievementId, event.getUser().getIdLong());
+
+        switch (result) {
+            case GRANTED -> {
+                event.reply("Granted **" + title + "** to <@" + targetUserId + ">.")
+                        .setEphemeral(true).queue();
+                ConsoleLog.info("Achievements", "Admin grant: id=" + achievementId
+                        + " to userId=" + targetUserId
+                        + " by adminId=" + event.getUser().getId()
+                        + " guildId=" + guildId);
+            }
+            case ALREADY_UNLOCKED -> event.reply("<@" + targetUserId + "> already has **" + title + "**.")
+                    .setEphemeral(true).queue();
+            case UNKNOWN_ACHIEVEMENT_ID -> event.reply("No achievement with id `" + achievementId + "`.")
+                    .setEphemeral(true).queue();
+        }
     }
 }

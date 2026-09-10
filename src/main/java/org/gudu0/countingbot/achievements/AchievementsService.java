@@ -129,24 +129,38 @@ public class AchievementsService {
     }
 
     public void unlockById(long guildId, long userId, String achievementId) {
+        unlockById(guildId, userId, achievementId, null);
+    }
+
+    /**
+     * Same unlock path as the trigger-driven and manual-only unlocks, with an optional
+     * granter id recorded for admin grants (see UserAchievements#grantedByAdminUserId).
+     * The unlock log message is identical regardless of how the unlock happened.
+     */
+    public AchievementGrantResult unlockById(long guildId, long userId, String achievementId, Long grantedByAdminUserId) {
         long now = System.currentTimeMillis();
 
         AchievementDef def = null;
         for (AchievementDef d : defs) {
             if (d.id.equals(achievementId)) { def = d; break; }
         }
-        if (def == null) return;
+        if (def == null) return AchievementGrantResult.UNKNOWN_ACHIEVEMENT_ID;
 
         synchronized (store.lock) {
             UserAchievements ua = store.state().getOrCreate(userId);
-            if (ua.isUnlocked(def.id)) return;
+            if (ua.isUnlocked(def.id)) return AchievementGrantResult.ALREADY_UNLOCKED;
 
             ua.unlock(def.id, now);
+            if (grantedByAdminUserId != null) {
+                ua.grantedByAdminUserId.put(def.id, grantedByAdminUserId);
+            }
             store.markDirty();
 
             if (def.logOnUnlock && logs != null) {
                 logs.log(guildId, "Achievement unlocked: " + def.title + ", by <@" + userId + ">!");
             }
         }
+
+        return AchievementGrantResult.GRANTED;
     }
 }
