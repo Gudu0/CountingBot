@@ -45,7 +45,5 @@ bin/
 
 /data/
 /.idea/
-/run-sync.bat
-/sync-data.txt
-/sync-data-log.txt
+/syncStuff/
 /docs/
