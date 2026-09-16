@@ -19,20 +19,20 @@ Deployment: `syncStuff/run-push.bat` / `run-sync.bat` drive WinSCP against a rem
 
 ### 1.2 Per-package inventory
 
-| Package | Files | Lines | What it actually does |
-|---|---:|---:|---|
-| `commands` | 11 | 978 | One `ListenerAdapter` per slash command, plus `CommandGuards` |
-| `counting` | 4 | 528 | The counting game — `CountingListener` is 429 of those lines |
-| `achievements` | 13 | 506 | Catalog + unlock engine + 5 tiny types + 2 enums |
-| `goals` | 4 | 332 | Pinned/edited goal embed, per-guild registry |
-| `config` | 5 | 194 | Two live config shapes + two store impls + one dead pair |
-| root | 2 | 318 | `Main` (232) wires everything; `SafetyChecks` (86) |
-| `disconnects` | 3 | 253 | Daily gateway-disconnect summary message |
-| `suggestions` | 4 | 196 | Suggestion persistence + DM/post (2 listeners live in `commands`) |
-| `util` | 3 | 173 | `JsonStore`, `ConsoleLog`, `BotPaths` |
-| `guild` | 3 | 165 | `GuildManager` / `GuildContext` / `GuildJoinListener` |
-| `stats` | 3 | 76 | Global fame/shame per user |
-| `logging` | 1 | 54 | `LogService` — Discord log thread + console passthrough |
+| Package        | Files | Lines | What it actually does                                             |
+|----------------|------:|------:|-------------------------------------------------------------------|
+| `commands`     |    11 |   978 | One `ListenerAdapter` per slash command, plus `CommandGuards`     |
+| `counting`     |     4 |   528 | The counting game — `CountingListener` is 429 of those lines      |
+| `achievements` |    13 |   506 | Catalog + unlock engine + 5 tiny types + 2 enums                  |
+| `goals`        |     4 |   332 | Pinned/edited goal embed, per-guild registry                      |
+| `config`       |     5 |   194 | Two live config shapes + two store impls + one dead pair          |
+| root           |     2 |   318 | `Main` (232) wires everything; `SafetyChecks` (86)                |
+| `disconnects`  |     3 |   253 | Daily gateway-disconnect summary message                          |
+| `suggestions`  |     4 |   196 | Suggestion persistence + DM/post (2 listeners live in `commands`) |
+| `util`         |     3 |   173 | `JsonStore`, `ConsoleLog`, `BotPaths`                             |
+| `guild`        |     3 |   165 | `GuildManager` / `GuildContext` / `GuildJoinListener`             |
+| `stats`        |     3 |    76 | Global fame/shame per user                                        |
+| `logging`      |     1 |    54 | `LogService` — Discord log thread + console passthrough           |
 
 ### 1.3 The fragmentation, measured
 
@@ -57,7 +57,7 @@ renaming `flushNow()` to `save()`.
 Confirmed by grep across `src/`:
 
 - `config/BotConfig.java` (35) + `config/ConfigStore.java` (73) — **108 lines, zero live
-  callers.** `BotConfig` is referenced only by `ConfigStore` and by a stale javadoc line in
+  callers.** `BotConfig` is referenced only by `ConfigStore` and by a stale Javadoc line in
   `SafetyChecks`. Superseded by `GlobalConfig` + `GuildConfig` + `TypedConfigStore`.
 - `AchievementsService` has a second "legacy" constructor taking a `StateStore`, plus the
   `legacyStateStore` field and the `guilds == null` branch of `stateStoreFor()`. `Main`
@@ -73,22 +73,22 @@ Confirmed by grep across `src/`:
 - `CountVerifier.isCorrectNumber` — commented out.
 - `UserStats.negCounts` — written nowhere, read nowhere (it is still persisted, see §6).
 - `StatsData.getOrDefault()`, `GuildManager.cachedCount()` — no callers.
-- `SafetyChecks`'s class javadoc advertises a `run(JDA, BotConfig, AtomicBoolean)` overload
+- `SafetyChecks`'s class Javadoc advertises a `run(JDA, BotConfig, AtomicBoolean)` overload
   "kept so older code still compiles". That method no longer exists.
 
 ### 1.5 Multi-server surface (what has to come out)
 
-| Mechanism | Where |
-|---|---|
-| `ConcurrentHashMap<Long, GuildContext>` | `GuildManager.contexts` |
-| `ConcurrentHashMap<Long, GoalsService>` | `GuildGoalsServiceRegistry.map` |
-| Per-guild data dirs | `BotPaths.GUILDS_DIR`, `BotPaths.guildDir(long)` |
-| Per-guild config | `config/GuildConfig` + one `TypedConfigStore` per guild |
-| `guildId` threaded through APIs | `LogService.log(long, String)`, `AchievementsService.onTrigger/unlockById`, `CountingListener.resyncNow/accept/markIncorrect/delete/logDecision`, `SafetyChecks.runForGuild`, `AchievementContext.guildId`, `SuggestionEntry.guildId` |
-| Runtime guild onboarding | `GuildJoinListener` (51 lines) |
-| Boot-time disk scan for guilds | `CountingListener.listGuildDirsOnDisk()` + the loop in `onReady` |
-| Per-guild command registration | `Main.registerGuildCommandsAll/One` |
-| Per-guild setup commands | `SetupListener` `setcountingchannel` / `setlogthread` |
+| Mechanism                               | Where                                                                                                                                                                                                                                 |
+|-----------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `ConcurrentHashMap<Long, GuildContext>` | `GuildManager.contexts`                                                                                                                                                                                                               |
+| `ConcurrentHashMap<Long, GoalsService>` | `GuildGoalsServiceRegistry.map`                                                                                                                                                                                                       |
+| Per-guild data dirs                     | `BotPaths.GUILDS_DIR`, `BotPaths.guildDir(long)`                                                                                                                                                                                      |
+| Per-guild config                        | `config/GuildConfig` + one `TypedConfigStore` per guild                                                                                                                                                                               |
+| `guildId` threaded through APIs         | `LogService.log(long, String)`, `AchievementsService.onTrigger/unlockById`, `CountingListener.resyncNow/accept/markIncorrect/delete/logDecision`, `SafetyChecks.runForGuild`, `AchievementContext.guildId`, `SuggestionEntry.guildId` |
+| Runtime guild onboarding                | `GuildJoinListener` (51 lines)                                                                                                                                                                                                        |
+| Boot-time disk scan for guilds          | `CountingListener.listGuildDirsOnDisk()` + the loop in `onReady`                                                                                                                                                                      |
+| Per-guild command registration          | `Main.registerGuildCommandsAll/One`                                                                                                                                                                                                   |
+| Per-guild setup commands                | `SetupListener` `setcountingchannel` / `setlogthread`                                                                                                                                                                                 |
 
 **Reality check against the data directory:** `data/guilds/` contains exactly one folder,
 `712304553931833385`. The bot is in 4 guilds; only this one has ever been configured.
@@ -180,22 +180,22 @@ Not just suggestions and achievements:
 Flat package `org.gudu0.countingbot` — with 14 files, sub-packages cost more navigation
 than they save.
 
-| File | Absorbs | Lines (est.) |
-|---|---|---|
-| `Main.java` | `Main` minus command registration | ~90 |
-| `SlashCommands.java` | the `updateCommands()` block from `Main` | ~80 |
-| `BotConfig.java` | `GlobalConfig`, `GuildConfig`, `TypedConfigStore`, `BotPaths`, `SafetyChecks`; deletes old `BotConfig`/`ConfigStore` | ~150 |
-| `Log.java` | `ConsoleLog` + `LogService` | ~90 |
-| `JsonStore.java` | unchanged + §6 hardening | ~105 |
-| `CountingListener.java` | `CountingListener`, `CountingState`→`State`, `CountVerifier`→private static + `Parsed` record, `StateStore` | ~470 |
-| `GoalsService.java` | `GoalsService`, `GoalState`→`State`, `GoalsStore`; deletes `GuildGoalsServiceRegistry` | ~230 |
-| `Achievements.java` | `AchievementsService`, `AchievementsCatalog`, `Conditions`, `Condition`, `AchievementDef`, `AchievementContext`, `AchievementTrigger`, `AchievementGrantResult`, `StatKey`, `GlobalKey`, `UserAchievements`, `AchievementsState`, `AchievementsStore` (13→1) | ~330 |
-| `AchievementsListener.java` | `AchievementsCommandListener` | ~110 |
-| `SuggestionsListener.java` | `SuggestCommandListener`, `SuggestResponseListener`, `SuggestionsService`, `SuggestionsStore`, `SuggestionsState`, `SuggestionEntry` (6→1) | ~230 |
-| `DisconnectListener.java` | `DisconnectDailyReporter`, `DisconnectDailyState`, `DisconnectStore` | ~200 |
-| `StatsListener.java` | `StatsListener`, `LeaderboardListener`, `StatsData`, `UserStats`, `StatsStore` | ~200 |
-| `AdminListener.java` | `SetupListener`, `PingListener`, `CountDelayListener`, `ResyncListener` | ~220 |
-| `CommandGuards.java` | unchanged (minus `requireUser`, see Phase 5) | ~80 |
+| File                        | Absorbs                                                                                                                                                                                                                                                      | Lines (est.) |
+|-----------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------|
+| `Main.java`                 | `Main` minus command registration                                                                                                                                                                                                                            | ~90          |
+| `SlashCommands.java`        | the `updateCommands()` block from `Main`                                                                                                                                                                                                                     | ~80          |
+| `BotConfig.java`            | `GlobalConfig`, `GuildConfig`, `TypedConfigStore`, `BotPaths`, `SafetyChecks`; deletes old `BotConfig`/`ConfigStore`                                                                                                                                         | ~150         |
+| `Log.java`                  | `ConsoleLog` + `LogService`                                                                                                                                                                                                                                  | ~90          |
+| `JsonStore.java`            | unchanged + §6 hardening                                                                                                                                                                                                                                     | ~105         |
+| `CountingListener.java`     | `CountingListener`, `CountingState`→`State`, `CountVerifier`→private static + `Parsed` record, `StateStore`                                                                                                                                                  | ~470         |
+| `GoalsService.java`         | `GoalsService`, `GoalState`→`State`, `GoalsStore`; deletes `GuildGoalsServiceRegistry`                                                                                                                                                                       | ~230         |
+| `Achievements.java`         | `AchievementsService`, `AchievementsCatalog`, `Conditions`, `Condition`, `AchievementDef`, `AchievementContext`, `AchievementTrigger`, `AchievementGrantResult`, `StatKey`, `GlobalKey`, `UserAchievements`, `AchievementsState`, `AchievementsStore` (13→1) | ~330         |
+| `AchievementsListener.java` | `AchievementsCommandListener`                                                                                                                                                                                                                                | ~110         |
+| `SuggestionsListener.java`  | `SuggestCommandListener`, `SuggestResponseListener`, `SuggestionsService`, `SuggestionsStore`, `SuggestionsState`, `SuggestionEntry` (6→1)                                                                                                                   | ~230         |
+| `DisconnectListener.java`   | `DisconnectDailyReporter`, `DisconnectDailyState`, `DisconnectStore`                                                                                                                                                                                         | ~200         |
+| `StatsListener.java`        | `StatsListener`, `LeaderboardListener`, `StatsData`, `UserStats`, `StatsStore`                                                                                                                                                                               | ~200         |
+| `AdminListener.java`        | `SetupListener`, `PingListener`, `CountDelayListener`, `ResyncListener`                                                                                                                                                                                      | ~220         |
+| `CommandGuards.java`        | unchanged (minus `requireUser`, see Phase 5)                                                                                                                                                                                                                 | ~80          |
 
 **56 files → 14. 12 packages → 1.** Estimated ~2,600 lines (down ~30%), almost all of the
 reduction from deleted dead code, deleted per-guild plumbing, and deleted store wrappers —
@@ -299,7 +299,7 @@ merged into `AdminListener`. `LeaderboardListener` → merged into `StatsListene
 **Kept:** `CommandGuards` (3 consumers).
 
 **Also removed:** `/setup setcountingchannel` and `/setup setlogthread` — they mutate values
-that are now constants. `/setup status` stays (it is the fastest way to confirm a deploy
+that are now constants. `/setup status` stays (it is the fastest way to confirm a deployment
 took). See Open Question 3.
 
 **Why better:** the current split means `/ping` costs a file, an import block and a JDA
@@ -343,16 +343,16 @@ Two defects to fix while in there, both found in this audit:
 Each phase is a separate build, a separate deploy, and independently revertable. Phases run
 in order; the dependency notes say why.
 
-| # | Phase | Depends on | Risk |
-|---|---|---|---|
-| 0 | Safety net: Jackson hardening + backups + baseline capture | — | Low |
-| 1 | Delete dead code | 0 | Low |
-| 2 | Collapse multi-server to one server | 1 | **High** |
-| 3 | Suggestions 6→1 | 2 | Low |
-| 4 | Achievements 13→2 | 2 | Medium |
-| 5 | Goals, stats, commands consolidation | 2 | Medium |
-| 6 | Logging + disconnect unification | 2, 5 | Medium |
-| 7 | Optional: flatten packages, tidy `data/` | 3–6 | Low |
+| # | Phase                                                      | Depends on | Risk     |
+|---|------------------------------------------------------------|------------|----------|
+| 0 | Safety net: Jackson hardening + backups + baseline capture | —          | Low      |
+| 1 | Delete dead code                                           | 0          | Low      |
+| 2 | Collapse multi-server to one server                        | 1          | **High** |
+| 3 | Suggestions 6→1                                            | 2          | Low      |
+| 4 | Achievements 13→2                                          | 2          | Medium   |
+| 5 | Goals, stats, commands consolidation                       | 2          | Medium   |
+| 6 | Logging + disconnect unification                           | 2, 5       | Medium   |
+| 7 | Optional: flatten packages, tidy `data/`                   | 3–6        | Low      |
 
 **Why Phase 2 before 3–6:** `guildId` threads through every feature's public API
 (`LogService.log(guildId, …)`, `achievements.onTrigger(trigger, guildId, userId)`,
@@ -385,7 +385,7 @@ tells you the audit was wrong about that item. Two need care:
   only safe after Phase 0 step 1. Its value is always 0.
 
 Also bump `build.gradle` `version` to `10.0-PHASE1-DEADCODE`. The version string is already
-used as a deploy marker (`9.0-GRANTING_ACHIEVEMENTS`); keeping one version per phase makes
+used as a deployment marker (`9.0-GRANTING_ACHIEVEMENTS`); keeping one version per phase makes
 rollback unambiguous about which jar is running.
 
 ### Phase 2 — Single server
@@ -465,13 +465,13 @@ phase ends in stop-jar / swap-jar / start-jar. Realistic window: 10–30 seconds
 
 ### What survives a restart, and what does not
 
-| Thing | Survives? | Mechanism |
-|---|---|---|
-| Counting state | Yes, if stopped gracefully | `state.json`, flushed every 5s + shutdown hook |
-| Stats / achievements | Yes, if stopped gracefully | `stats.json` / `achievements.json`, 10s + hook |
-| Goal embed identity | Yes | `goals.json.goalMessageId` — the message is *edited*, not reposted |
-| Daily disconnect message | Yes | `disconnects.json.messageId` |
-| Counts sent during downtime | **No** | Not received, not validated, not deleted |
+| Thing                       | Survives?                  | Mechanism                                                          |
+|-----------------------------|----------------------------|--------------------------------------------------------------------|
+| Counting state              | Yes, if stopped gracefully | `state.json`, flushed every 5s + shutdown hook                     |
+| Stats / achievements        | Yes, if stopped gracefully | `stats.json` / `achievements.json`, 10s + hook                     |
+| Goal embed identity         | Yes                        | `goals.json.goalMessageId` — the message is *edited*, not reposted |
+| Daily disconnect message    | Yes                        | `disconnects.json.messageId`                                       |
+| Counts sent during downtime | **No**                     | Not received, not validated, not deleted                           |
 
 **The graceful-shutdown dependency is load-bearing.** `JsonStore.startAutoFlush` registers a
 JVM shutdown hook that calls `flushNow()`. A clean stop (SIGTERM / Ctrl-C / `systemctl stop`)
@@ -590,7 +590,7 @@ locations verbatim, including `data/guilds/712304553931833385/`. The directory n
 vestigial after Phase 2; that is fine. A refactor that both restructures code and moves data
 cannot be bisected when something goes wrong.
 
-### 6.4 The deploy scripts are a live hazard
+### 6.4 The deployment scripts are a live hazard
 
 `syncStuff/push-data.txt` runs:
 
@@ -799,7 +799,7 @@ Answers needed before the phase in brackets can be planned in detail.
 
 11. **How is the bot actually stopped on the server?** [§5, every phase] `systemctl stop`,
     `screen`/`tmux` + Ctrl-C, a `kill`, or the process just getting killed on reboot? A `kill -9`
-    skips the shutdown hooks and loses up to 30 seconds of writes, which changes the deploy
+    skips the shutdown hooks and loses up to 30 seconds of writes, which changes the deployment
     procedure in §5 from "stop and verify" to "flush first, then stop".
 
 12. **Are you keeping the bot in the other 3 guilds?** [Phase 2] If yes, it needs the inert guard
