@@ -46,4 +46,5 @@ bin/
 /data/
 /.idea/
 /syncStuff/
-/docs/
+
+**.zip

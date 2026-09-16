@@ -1,0 +1,2 @@
+@echo off
+"C:\Program Files (x86)\WinSCP\WinSCP.com" /script="C:\Users\bobha\OneDrive\Desktop\FROM LAST\JavaCountingBot\syncStuff\push-data.txt" /log="C:\Users\bobha\OneDrive\Desktop\FROM LAST\JavaCountingBot\syncStuff\push-data-log.txt"
